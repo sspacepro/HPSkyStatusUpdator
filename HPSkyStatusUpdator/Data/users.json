@@ -1,0 +1,38 @@
+[
+  {
+    "Username": "Bob",
+    "ClientId": "28637803-5d25-4ffe-9deb-9ae8f0d7e3c3",
+    "Blocked": false,
+    "LastIp": "::1",
+    "WindowStart": "2026-07-11T22:44:01.4454453Z",
+    "RequestsThisWindow": 4,
+    "LastRequest": "2026-07-11T22:44:39.6052797Z"
+  },
+  {
+    "Username": "Bob",
+    "ClientId": "95fcdafe-e7be-49ec-845a-6795d7e85cb9",
+    "Blocked": false,
+    "LastIp": "::1",
+    "WindowStart": "2026-07-11T22:44:01.450348Z",
+    "RequestsThisWindow": 0,
+    "LastRequest": "2026-07-11T22:44:01.4503486Z"
+  },
+  {
+    "Username": "Bob",
+    "ClientId": "5c6bedfb-93e1-4e29-99b5-56c6a8a7d736",
+    "Blocked": false,
+    "LastIp": "::1",
+    "WindowStart": "2026-07-11T22:44:01.4504918Z",
+    "RequestsThisWindow": 0,
+    "LastRequest": "2026-07-11T22:44:01.4504919Z"
+  },
+  {
+    "Username": "Bob2",
+    "ClientId": "3b541199-f271-45a7-8151-6fbe531ef1af",
+    "Blocked": false,
+    "LastIp": "::1",
+    "WindowStart": "2026-07-11T22:44:01.4504995Z",
+    "RequestsThisWindow": 0,
+    "LastRequest": "2026-07-11T22:44:01.4504995Z"
+  }
+]
