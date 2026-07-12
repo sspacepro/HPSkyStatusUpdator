@@ -22,6 +22,7 @@ var app = builder.Build();
 var hypixel = app.Services.GetRequiredService<HypixelService>();
 app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<RateLimitMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 app.MapGet("/api/v1/status",
 (
