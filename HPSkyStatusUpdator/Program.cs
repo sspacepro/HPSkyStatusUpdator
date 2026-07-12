@@ -1,5 +1,6 @@
+using HPSkyStatusUpdator.Middleware;
+using HPSkyStatusUpdator.Models;
 using HPSkyStatusUpdator.Services;
-
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -9,33 +10,26 @@ builder.Services.AddSingleton<HypixelService>();
 
 builder.Services.AddHostedService<HypixelUpdater>();
 
+builder.Services.AddSingleton<RegistrationService>();
+
+builder.Services.AddSingleton<RateLimitService>();
+
 builder.Services.AddSingleton<UserService>();
 
 var app = builder.Build();
 
 
 var hypixel = app.Services.GetRequiredService<HypixelService>();
-
+app.UseMiddleware<AuthenticationMiddleware>();
+app.UseMiddleware<RateLimitMiddleware>();
 
 app.MapGet("/api/v1/status",
 (
     HttpContext context,
-    HypixelService hypixel,
-    UserService users,
-    IConfiguration config
+    HypixelService hypixel
 ) =>
 {
-    var user = users.Authenticate(context);
-
-    if (user == null)
-        return Results.Unauthorized();
-
-    int maxRequests =
-        config.GetValue<int>("Settings:MaxRequestsPerMinute");
-
-    if (!users.CheckRateLimit(user, maxRequests))
-        return Results.StatusCode(429);
-
+    var user = (User)context.Items["User"]!;
     return Results.Ok(new
     {
         username = user.Username,
@@ -46,14 +40,28 @@ app.MapPost("/api/v1/register",
 (
     HttpContext context,
     UserService users,
+    RegistrationService registrations,
     RegisterRequest request
 ) =>
 {
+    string ip =
+        context.Connection.RemoteIpAddress?.ToString()
+        ?? "unknown";
+
+
+    if (!registrations.CanRegister(ip))
+    {
+        return Results.StatusCode(429);
+    }
+
+
     try
     {
-        string ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var user = users.Register(
+            request.Username,
+            ip
+        );
 
-        var user = users.Register(request.Username, ip);
 
         return Results.Ok(new
         {

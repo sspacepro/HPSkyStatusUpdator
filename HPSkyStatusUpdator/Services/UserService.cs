@@ -5,24 +5,6 @@ namespace HPSkyStatusUpdator.Services;
 
 public class UserService
 {
-    public bool CheckRateLimit(User user, int maxRequests)
-    {
-        var now = DateTime.UtcNow;
-
-        if ((now - user.WindowStart).TotalMinutes >= 1)
-        {
-            user.WindowStart = now;
-            user.RequestsThisWindow = 0;
-        }
-
-        user.RequestsThisWindow++;
-
-        user.LastRequest = now;
-
-        Save();
-
-        return user.RequestsThisWindow <= maxRequests;
-    }
     public User? Authenticate(HttpContext context)
     {
         string? clientId = context.Request.Headers["Client-ID"]
@@ -41,8 +23,7 @@ public class UserService
             return null;
 
         user.LastIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-        Save();
+       
 
         return user;
     }
