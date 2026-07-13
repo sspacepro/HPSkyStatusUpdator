@@ -3,18 +3,18 @@
     "Username": "Bob",
     "ClientId": "28637803-5d25-4ffe-9deb-9ae8f0d7e3c3",
     "Blocked": false,
-    "LastIp": "::1",
-    "WindowStart": "2026-07-12T00:28:23.5273638Z",
-    "RequestsThisWindow": 0,
-    "LastRequest": "2026-07-12T00:28:27.4720691Z"
+    "LastIp": "::1"
   },
   {
     "Username": "Bob7",
     "ClientId": "4e408b15-a517-42dc-98d2-d3be1d1625ce",
     "Blocked": false,
-    "LastIp": "::1",
-    "WindowStart": "2026-07-12T00:46:42.3589036Z",
-    "RequestsThisWindow": 0,
-    "LastRequest": "2026-07-12T00:46:42.3589037Z"
+    "LastIp": "::1"
+  },
+  {
+    "Username": "Booub",
+    "ClientId": "cd0710b3-ada4-4159-a6b2-39d26ed56c8e",
+    "Blocked": false,
+    "LastIp": "::1"
   }
 ]

@@ -16,8 +16,13 @@ builder.Services.AddSingleton<RateLimitService>();
 
 builder.Services.AddSingleton<UserService>();
 
-var app = builder.Build();
+builder.Services.AddSingleton<DatabaseService>();
 
+var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    _ = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+}
 
 var hypixel = app.Services.GetRequiredService<HypixelService>();
 app.UseMiddleware<AuthenticationMiddleware>();
