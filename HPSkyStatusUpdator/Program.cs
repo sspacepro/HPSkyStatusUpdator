@@ -30,6 +30,7 @@ using (var scope = app.Services.CreateScope())
 var hypixel = app.Services.GetRequiredService<HypixelService>();
 app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<RateLimitMiddleware>();
+app.UseMiddleware<AdminAuthenticationMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
 
@@ -80,8 +81,38 @@ app.MapGet("/api/admin/settings/hypixel-update-interval-seconds",
 
 
 
+app.MapPost("/api/admin/users/{username}/block",
+(
+    string username,
+    UserService users
+) =>
+{
+    if (!users.SetBlocked(username, true))
+        return Results.NotFound();
 
+    return Results.Ok();
+});
 
+app.MapPost("/api/admin/users/{username}/unblock",
+(
+    string username,
+    UserService users
+) =>
+{
+    if (!users.SetBlocked(username, false))
+        return Results.NotFound();
+
+    return Results.Ok();
+});
+app.MapGet("/api/admin/users",
+(
+    UserService users
+) =>
+{
+    return Results.Ok(
+        users.GetAllUsers()
+    );
+});
 app.MapGet("/api/v1/status",
 (
     HttpContext context,

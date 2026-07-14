@@ -62,7 +62,62 @@ public class UserService
         _database = database;
     }
 
+    public List<User> GetAllUsers()
+    {
+        using var connection = _database.GetConnection();
 
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    SELECT Username,
+           ClientId,
+           Blocked,
+           LastIp
+    FROM Users
+    ORDER BY Username
+    """;
+
+        using var reader = command.ExecuteReader();
+
+        List<User> users = new();
+
+        while (reader.Read())
+        {
+            users.Add(new User
+            {
+                Username = reader.GetString(0),
+                ClientId = reader.GetString(1),
+                Blocked = reader.GetInt32(2) == 1,
+                LastIp = reader.GetString(3)
+            });
+        }
+
+        return users;
+    }
+
+    public bool SetBlocked(string username, bool blocked)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    UPDATE Users
+    SET Blocked = $blocked
+    WHERE LOWER(Username) = LOWER($username)
+    """;
+
+        command.Parameters.AddWithValue("$blocked", blocked ? 1 : 0);
+        command.Parameters.AddWithValue("$username", username);
+
+        return command.ExecuteNonQuery() > 0;
+    }
     public User Register(string username, string ip)
     {
         username = username.Trim();

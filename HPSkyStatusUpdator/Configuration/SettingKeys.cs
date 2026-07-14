@@ -9,4 +9,5 @@ public static class SettingKeys
     public const string MaintenanceMode = "MaintenanceMode";
     public const string MinClientVersion = "MinClientVersion";
     public const string HypixelUpdateIntervalSeconds = "HypixelUpdateIntervalSeconds";
+    public const string AdminKey = "AdminKey";
 }
