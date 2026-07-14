@@ -1,18 +1,19 @@
-﻿using System.Text.Json;
+﻿using HPSkyStatusUpdator.Configuration;
+using System.Text.Json;
 
 namespace HPSkyStatusUpdator.Services;
 
 public class HypixelService
 {
     private readonly HttpClient _client;
-    private readonly IConfiguration _config;
+    private readonly SettingsService _settings;
 
     private int _skyblockPlayers = -1;
 
-    public HypixelService(HttpClient client, IConfiguration config)
+    public HypixelService(HttpClient client, SettingsService settings)
     {
         _client = client;
-        _config = config;
+        _settings = settings;
     }
 
 
@@ -26,7 +27,16 @@ public class HypixelService
     {
         try
         {
-            string apiKey = _config["Hypixel:ApiKey"]!;
+            string? apiKey = _settings.GetString(
+                SettingKeys.HypixelApiKey
+            );
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                Console.WriteLine("Hypixel API key not configured.");
+                return;
+            }
+            
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,

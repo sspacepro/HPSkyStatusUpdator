@@ -37,7 +37,19 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 
 
 
+app.MapPost("/api/admin/settings/hypixel-api-key",
+(
+    string apiKey,
+    SettingsService settings
+) =>
+{
+    settings.SetString(
+        SettingKeys.HypixelApiKey,
+        apiKey
+    );
 
+    return Results.Ok();
+});
 app.MapPost("/api/admin/settings/hypixel-update-interval-seconds/{seconds}",
 (
     int seconds,
