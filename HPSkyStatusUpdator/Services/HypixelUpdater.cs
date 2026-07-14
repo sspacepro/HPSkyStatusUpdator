@@ -1,35 +1,36 @@
-﻿namespace HPSkyStatusUpdator.Services;
+﻿using HPSkyStatusUpdator.Configuration;
+
+namespace HPSkyStatusUpdator.Services;
 
 public class HypixelUpdater : BackgroundService
 {
     private readonly HypixelService _hypixelService;
-    private readonly IConfiguration _config;
+    private readonly SettingsService _settings;
 
     public HypixelUpdater(
         HypixelService hypixelService,
-        IConfiguration config)
+        SettingsService settings)
     {
         _hypixelService = hypixelService;
-        _config = config;
+        _settings = settings;
     }
 
 
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
-        int minutes = _config
-            .GetValue<int>("Settings:UpdateMinutes");
-
-
         while (!stoppingToken.IsCancellationRequested)
         {
             await _hypixelService.Update();
 
-
-            await Task.Delay(
-                TimeSpan.FromMinutes(minutes),
-                stoppingToken
+            int seconds = _settings.GetInt(
+                SettingKeys.HypixelUpdateIntervalSeconds,
+                60
             );
+            await Task.Delay(
+                TimeSpan.FromSeconds(seconds),
+                stoppingToken
+                        );
         }
     }
 }

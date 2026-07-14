@@ -8,4 +8,5 @@ public static class SettingKeys
     public const string MaxWatchedPlayers = "MaxWatchedPlayers";
     public const string MaintenanceMode = "MaintenanceMode";
     public const string MinClientVersion = "MinClientVersion";
+    public const string HypixelUpdateIntervalSeconds = "HypixelUpdateIntervalSeconds";
 }

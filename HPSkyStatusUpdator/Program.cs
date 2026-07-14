@@ -38,28 +38,28 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 
 
 
-app.MapPost("/api/admin/settings/player-update-seconds/{seconds}",
+app.MapPost("/api/admin/settings/hypixel-update-interval-seconds/{seconds}",
 (
     int seconds,
     SettingsService settings
 ) =>
 {
     settings.SetInt(
-        SettingKeys.PlayerUpdateSeconds,
+        SettingKeys.HypixelUpdateIntervalSeconds,
         seconds
     );
 
     return Results.Ok();
 });
 
-app.MapGet("/api/admin/settings/player-update-seconds",
+app.MapGet("/api/admin/settings/hypixel-update-interval-seconds",
 (
     SettingsService settings
 ) =>
 {
     return Results.Ok(
         settings.GetInt(
-            SettingKeys.PlayerUpdateSeconds,
+            SettingKeys.HypixelUpdateIntervalSeconds,
             60
         )
     );
