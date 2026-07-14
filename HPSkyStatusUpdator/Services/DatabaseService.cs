@@ -30,6 +30,18 @@ public class DatabaseService
         """;
 
         command.ExecuteNonQuery();
+        var settingsCommand = connection.CreateCommand();
+
+        settingsCommand.CommandText =
+        """
+        CREATE TABLE IF NOT EXISTS Settings
+        (
+            Key TEXT NOT NULL PRIMARY KEY,
+            Value TEXT NOT NULL
+        );
+        """;
+
+        settingsCommand.ExecuteNonQuery();
     }
 
     public SqliteConnection GetConnection()

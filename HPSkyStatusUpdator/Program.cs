@@ -1,3 +1,4 @@
+using HPSkyStatusUpdator.Configuration;
 using HPSkyStatusUpdator.Middleware;
 using HPSkyStatusUpdator.Models;
 using HPSkyStatusUpdator.Services;
@@ -18,6 +19,8 @@ builder.Services.AddSingleton<UserService>();
 
 builder.Services.AddSingleton<DatabaseService>();
 
+builder.Services.AddSingleton<SettingsService>();
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -28,6 +31,44 @@ var hypixel = app.Services.GetRequiredService<HypixelService>();
 app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<RateLimitMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
+
+
+
+
+
+
+
+app.MapPost("/api/admin/settings/player-update-seconds/{seconds}",
+(
+    int seconds,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.PlayerUpdateSeconds,
+        seconds
+    );
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/player-update-seconds",
+(
+    SettingsService settings
+) =>
+{
+    return Results.Ok(
+        settings.GetInt(
+            SettingKeys.PlayerUpdateSeconds,
+            60
+        )
+    );
+});
+
+
+
+
+
 
 app.MapGet("/api/v1/status",
 (
@@ -82,6 +123,30 @@ app.MapPost("/api/v1/register",
             error = ex.Message
         });
     }
+});
+app.MapPost("/api/admin/settings/{key}",
+(
+    string key,
+    string value,
+    SettingsService settings
+) =>
+{
+    settings.Set(key, value);
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/{key}",
+(
+    string key,
+    SettingsService settings
+) =>
+{
+    var value = settings.Get(key);
+
+    if (value == null)
+        return Results.NotFound();
+
+    return Results.Ok(value);
 });
 
 app.Run();
