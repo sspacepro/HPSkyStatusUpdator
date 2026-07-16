@@ -42,6 +42,39 @@ public class DatabaseService
         """;
 
         settingsCommand.ExecuteNonQuery();
+
+        var watchListCommand = connection.CreateCommand();
+
+        watchListCommand.CommandText =
+        """
+        CREATE TABLE IF NOT EXISTS WatchList
+        (
+            ClientId TEXT NOT NULL,
+            Username TEXT NOT NULL,
+
+            PRIMARY KEY(ClientId, Username),
+
+            FOREIGN KEY(ClientId)
+                REFERENCES Users(ClientId)
+                ON DELETE CASCADE
+        );
+        """;
+
+        watchListCommand.ExecuteNonQuery();
+
+        var playerStatusCommand = connection.CreateCommand();
+
+        playerStatusCommand.CommandText =
+        """
+        CREATE TABLE IF NOT EXISTS PlayerStatus
+        (
+            Username TEXT NOT NULL PRIMARY KEY,
+            SkyBlockOnline INTEGER NOT NULL,
+            Mode TEXT NOT NULL
+        );
+        """;
+
+        playerStatusCommand.ExecuteNonQuery();
     }
 
     public SqliteConnection GetConnection()

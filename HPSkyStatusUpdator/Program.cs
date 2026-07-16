@@ -21,6 +21,10 @@ builder.Services.AddSingleton<DatabaseService>();
 
 builder.Services.AddSingleton<SettingsService>();
 
+builder.Services.AddHostedService<PlayerWatcherService>();
+
+builder.Services.AddHttpClient<HypixelPlayerService>();
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -38,19 +42,6 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 
 
 
-app.MapPost("/api/admin/settings/hypixel-api-key",
-(
-    string apiKey,
-    SettingsService settings
-) =>
-{
-    settings.SetString(
-        SettingKeys.HypixelApiKey,
-        apiKey
-    );
-
-    return Results.Ok();
-});
 app.MapPost("/api/admin/settings/hypixel-update-interval-seconds/{seconds}",
 (
     int seconds,
@@ -79,8 +70,33 @@ app.MapGet("/api/admin/settings/hypixel-update-interval-seconds",
 });
 
 
+app.MapPost("/api/v1/watch/{username}",
+(
+    HttpContext context,
+    string username,
+    UserService users
+) =>
+{
+    var user = (User)context.Items["User"]!;
 
+    if (!users.AddWatchPlayer(user.ClientId, username))
+        return Results.BadRequest("Maximum of 3 watched players.");
 
+    return Results.Ok();
+});
+app.MapGet("/api/admin/stats",
+(
+    UserService users,
+    HypixelService hypixel
+) =>
+{
+    return Results.Ok(new
+    {
+        RegisteredUsers = users.GetUserCount(),
+        SkyBlockPlayers = hypixel.GetSkyblockPlayers(),
+        ServerTime = DateTime.UtcNow
+    });
+});
 app.MapPost("/api/admin/users/{username}/block",
 (
     string username,
@@ -166,6 +182,18 @@ app.MapPost("/api/v1/register",
             error = ex.Message
         });
     }
+});
+app.MapGet("/api/v1/watch/status",
+(
+    HttpContext context,
+    UserService users
+) =>
+{
+    var user = (User)context.Items["User"]!;
+
+    return Results.Ok(
+        users.GetPlayerStatuses(user.ClientId)
+    );
 });
 app.MapPost("/api/admin/settings/{key}",
 (

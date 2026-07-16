@@ -57,6 +57,125 @@ public class UserService
     }
     private readonly DatabaseService _database;
 
+    public List<string> GetWatchedPlayers()
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        SELECT Username
+        FROM WatchList
+        """;
+
+        using var reader = command.ExecuteReader();
+
+        List<string> players = new();
+
+        while (reader.Read())
+        {
+            players.Add(reader.GetString(0));
+        }
+
+        return players;
+    }
+
+    public void UpdatePlayerStatus(
+    string username,
+    bool skyBlockOnline,
+    string mode)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        INSERT INTO PlayerStatus
+        (
+            Username,
+            SkyBlockOnline,
+            Mode
+        )
+        VALUES
+        (
+            $username,
+            $online,
+            $mode
+        )
+        ON CONFLICT(Username)
+        DO UPDATE SET
+            SkyBlockOnline = $online,
+            Mode = $mode;
+        """;
+
+        command.Parameters.AddWithValue(
+            "$username",
+            username
+        );
+
+        command.Parameters.AddWithValue(
+            "$online",
+            skyBlockOnline ? 1 : 0
+        );
+
+        command.Parameters.AddWithValue(
+            "$mode",
+            mode
+        );
+
+        command.ExecuteNonQuery();
+    }
+
+    public object GetPlayerStatuses(string clientId)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        SELECT 
+            WatchList.Username,
+            PlayerStatus.SkyBlockOnline,
+            PlayerStatus.Mode
+        FROM WatchList
+        LEFT JOIN PlayerStatus
+            ON WatchList.Username = PlayerStatus.Username
+        WHERE WatchList.ClientId = $clientId
+        """;
+
+        command.Parameters.AddWithValue(
+            "$clientId",
+            clientId
+        );
+
+        using var reader = command.ExecuteReader();
+
+        List<object> results = new();
+
+        while (reader.Read())
+        {
+            results.Add(new
+            {
+                Username = reader.GetString(0),
+                SkyBlockOnline = !reader.IsDBNull(1) &&
+                    reader.GetInt32(1) == 1,
+                Mode = reader.IsDBNull(2)
+                    ? ""
+                    : reader.GetString(2)
+            });
+        }
+
+        return results;
+    }
     public UserService(DatabaseService database)
     {
         _database = database;
@@ -97,7 +216,67 @@ public class UserService
 
         return users;
     }
+    public int GetUserCount()
+    {
+        using var connection = _database.GetConnection();
 
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    SELECT COUNT(*)
+    FROM Users
+    """;
+
+        return Convert.ToInt32(command.ExecuteScalar());
+    }
+    public bool AddWatchPlayer(string clientId, string username)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var countCommand = connection.CreateCommand();
+
+        countCommand.CommandText =
+        """
+    SELECT COUNT(*)
+    FROM WatchList
+    WHERE ClientId = $clientId
+    """;
+
+        countCommand.Parameters.AddWithValue("$clientId", clientId);
+
+        long count = (long)countCommand.ExecuteScalar()!;
+
+        if (count >= 3)
+            return false;
+
+        var insertCommand = connection.CreateCommand();
+
+        insertCommand.CommandText =
+        """
+    INSERT OR IGNORE INTO WatchList
+    (
+        ClientId,
+        Username
+    )
+    VALUES
+    (
+        $clientId,
+        $username
+    )
+    """;
+
+        insertCommand.Parameters.AddWithValue("$clientId", clientId);
+        insertCommand.Parameters.AddWithValue("$username", username);
+
+        insertCommand.ExecuteNonQuery();
+
+        return true;
+    }
     public bool SetBlocked(string username, bool blocked)
     {
         using var connection = _database.GetConnection();
