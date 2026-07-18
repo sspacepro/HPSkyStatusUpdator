@@ -80,7 +80,7 @@ public class HypixelPlayerService
     }
 
 
-    private async Task<string?> GetUuid(string username)
+    public async Task<string?> GetUuid(string username)
     {
         using var response =
             await _client.GetAsync(

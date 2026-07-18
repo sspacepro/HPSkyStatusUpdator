@@ -15,6 +15,17 @@ public class DatabaseService
             new SqliteConnection(_connectionString);
 
         connection.Open();
+        var migrationCommand = connection.CreateCommand();
+
+        migrationCommand.CommandText =
+        """
+        CREATE TABLE IF NOT EXISTS Migrations
+        (
+            Version INTEGER PRIMARY KEY
+        );
+        """;
+
+        migrationCommand.ExecuteNonQuery();
 
         var command = connection.CreateCommand();
 
@@ -51,8 +62,9 @@ public class DatabaseService
         (
             ClientId TEXT NOT NULL,
             Username TEXT NOT NULL,
+            Uuid TEXT NOT NULL,
 
-            PRIMARY KEY(ClientId, Username),
+            PRIMARY KEY(ClientId, Uuid),
 
             FOREIGN KEY(ClientId)
                 REFERENCES Users(ClientId)
@@ -75,10 +87,64 @@ public class DatabaseService
         """;
 
         playerStatusCommand.ExecuteNonQuery();
+        if (!HasMigration(connection, 1))
+        {
+            Console.WriteLine("Applying migration 1...");
+
+
+            AddMigration(connection, 1);
+        }
     }
 
     public SqliteConnection GetConnection()
     {
         return new SqliteConnection(_connectionString);
+    }
+
+    private bool HasMigration(
+    SqliteConnection connection,
+    int version)
+    {
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    SELECT COUNT(*)
+    FROM Migrations
+    WHERE Version = $version
+    """;
+
+        command.Parameters.AddWithValue(
+            "$version",
+            version
+        );
+
+        return (long)command.ExecuteScalar()! > 0;
+    }
+
+    private void AddMigration(
+        SqliteConnection connection,
+        int version)
+    {
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    INSERT INTO Migrations
+    (
+        Version
+    )
+    VALUES
+    (
+        $version
+    )
+    """;
+
+        command.Parameters.AddWithValue(
+            "$version",
+            version
+        );
+
+        command.ExecuteNonQuery();
     }
 }

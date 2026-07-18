@@ -232,8 +232,16 @@ public class UserService
 
         return Convert.ToInt32(command.ExecuteScalar());
     }
-    public bool AddWatchPlayer(string clientId, string username)
+    public async Task<bool> AddWatchPlayer(
+        string clientId,
+        string username,
+        HypixelPlayerService hypixelPlayers)
     {
+        username = username.Trim().ToLowerInvariant();
+        string? uuid = await hypixelPlayers.GetUuid(username);
+
+        if (uuid == null)
+            throw new Exception("Player not found.");
         using var connection = _database.GetConnection();
 
         connection.Open();
@@ -258,20 +266,23 @@ public class UserService
 
         insertCommand.CommandText =
         """
-    INSERT OR IGNORE INTO WatchList
-    (
-        ClientId,
-        Username
-    )
-    VALUES
-    (
-        $clientId,
-        $username
-    )
-    """;
-
+        INSERT OR IGNORE INTO WatchList
+        (
+            ClientId,
+            Username,
+            Uuid
+        )
+        VALUES
+        (
+            $clientId,
+            $username,
+            $uuid
+        )
+        """;
         insertCommand.Parameters.AddWithValue("$clientId", clientId);
         insertCommand.Parameters.AddWithValue("$username", username);
+        insertCommand.Parameters.AddWithValue("$uuid", uuid);
+
 
         insertCommand.ExecuteNonQuery();
 
@@ -296,6 +307,32 @@ public class UserService
         command.Parameters.AddWithValue("$username", username);
 
         return command.ExecuteNonQuery() > 0;
+    }
+
+    public List<string> GetUniqueWatchedPlayers()
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    SELECT DISTINCT LOWER(Username)
+    FROM WatchList
+    """;
+
+        using var reader = command.ExecuteReader();
+
+        List<string> players = new();
+
+        while (reader.Read())
+        {
+            players.Add(reader.GetString(0));
+        }
+
+        return players;
     }
     public User Register(string username, string ip)
     {

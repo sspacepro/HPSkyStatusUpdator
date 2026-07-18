@@ -25,6 +25,8 @@ builder.Services.AddHostedService<PlayerWatcherService>();
 
 builder.Services.AddHttpClient<HypixelPlayerService>();
 
+builder.Services.AddSingleton<NotificationService>();
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -71,16 +73,22 @@ app.MapGet("/api/admin/settings/hypixel-update-interval-seconds",
 
 
 app.MapPost("/api/v1/watch/{username}",
-(
+async (
     HttpContext context,
     string username,
-    UserService users
+    UserService users,
+    HypixelPlayerService hypixelPlayers
 ) =>
 {
     var user = (User)context.Items["User"]!;
 
-    if (!users.AddWatchPlayer(user.ClientId, username))
+    if (!await users.AddWatchPlayer(
+        user.ClientId,
+        username,
+        hypixelPlayers))
+    {
         return Results.BadRequest("Maximum of 3 watched players.");
+    }
 
     return Results.Ok();
 });

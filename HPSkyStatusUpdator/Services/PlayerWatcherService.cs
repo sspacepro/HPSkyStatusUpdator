@@ -19,7 +19,7 @@ public class PlayerWatcherService : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var players = _users.GetWatchedPlayers();
+            var players = _users.GetUniqueWatchedPlayers();
 
             foreach (var player in players)
             {
