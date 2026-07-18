@@ -72,6 +72,20 @@ app.MapGet("/api/admin/settings/hypixel-update-interval-seconds",
 });
 
 
+
+
+app.MapGet("/api/v1/notifications",
+(
+    HttpContext context,
+    NotificationService notifications
+) =>
+{
+    var user = (User)context.Items["User"]!;
+
+    var result = notifications.Get(user.ClientId);
+
+    return Results.Ok(result);
+});
 app.MapPost("/api/v1/watch/{username}",
 async (
     HttpContext context,
@@ -82,15 +96,24 @@ async (
 {
     var user = (User)context.Items["User"]!;
 
-    if (!await users.AddWatchPlayer(
-        user.ClientId,
-        username,
-        hypixelPlayers))
+    try
     {
-        return Results.BadRequest("Maximum of 3 watched players.");
-    }
+        if (!await users.AddWatchPlayer(
+            user.ClientId,
+            username,
+            hypixelPlayers))
+        {
+            return Results.BadRequest(
+    "Player is already being watched or your watch list is full."
+);
+        }
 
-    return Results.Ok();
+        return Results.Ok();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
 });
 app.MapGet("/api/admin/stats",
 (

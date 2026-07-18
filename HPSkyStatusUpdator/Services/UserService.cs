@@ -233,15 +233,17 @@ public class UserService
         return Convert.ToInt32(command.ExecuteScalar());
     }
     public async Task<bool> AddWatchPlayer(
-        string clientId,
-        string username,
-        HypixelPlayerService hypixelPlayers)
+     string clientId,
+     string username,
+     HypixelPlayerService hypixelPlayers)
     {
         username = username.Trim().ToLowerInvariant();
+
         string? uuid = await hypixelPlayers.GetUuid(username);
 
         if (uuid == null)
-            throw new Exception("Player not found.");
+            throw new Exception("Player does not exist.");
+
         using var connection = _database.GetConnection();
 
         connection.Open();
@@ -266,27 +268,91 @@ public class UserService
 
         insertCommand.CommandText =
         """
-        INSERT OR IGNORE INTO WatchList
-        (
-            ClientId,
-            Username,
-            Uuid
-        )
-        VALUES
-        (
-            $clientId,
-            $username,
-            $uuid
-        )
-        """;
+    INSERT OR IGNORE INTO WatchList
+    (
+        ClientId,
+        Username,
+        Uuid
+    )
+    VALUES
+    (
+        $clientId,
+        $username,
+        $uuid
+    )
+    """;
+
         insertCommand.Parameters.AddWithValue("$clientId", clientId);
         insertCommand.Parameters.AddWithValue("$username", username);
         insertCommand.Parameters.AddWithValue("$uuid", uuid);
 
+        int rows = insertCommand.ExecuteNonQuery();
 
-        insertCommand.ExecuteNonQuery();
+        return rows > 0;
+    }
 
-        return true;
+    public List<string> GetClientsWatching(string uuid)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        SELECT ClientId
+        FROM WatchList
+        WHERE Uuid = $uuid
+        """;
+
+        command.Parameters.AddWithValue(
+            "$uuid",
+            uuid
+        );
+
+        using var reader = command.ExecuteReader();
+
+        List<string> clients = new();
+
+        while (reader.Read())
+        {
+            clients.Add(reader.GetString(0));
+        }
+
+        return clients;
+    }
+    public PlayerStatus? GetPlayerStatus(string username)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        SELECT Username, SkyBlockOnline, Mode
+        FROM PlayerStatus
+        WHERE Username = $username
+        """;
+
+        command.Parameters.AddWithValue(
+            "$username",
+            username
+        );
+
+        using var reader = command.ExecuteReader();
+
+        if (!reader.Read())
+            return null;
+
+        return new PlayerStatus
+        {
+            Username = reader.GetString(0),
+            SkyBlockOnline = reader.GetBoolean(1),
+            Mode = reader.GetString(2)
+        };
     }
     public bool SetBlocked(string username, bool blocked)
     {
@@ -309,7 +375,7 @@ public class UserService
         return command.ExecuteNonQuery() > 0;
     }
 
-    public List<string> GetUniqueWatchedPlayers()
+    public List<WatchedPlayer> GetUniqueWatchedPlayers()
     {
         using var connection = _database.GetConnection();
 
@@ -319,17 +385,23 @@ public class UserService
 
         command.CommandText =
         """
-    SELECT DISTINCT LOWER(Username)
+    SELECT DISTINCT
+        Username,
+        Uuid
     FROM WatchList
     """;
 
         using var reader = command.ExecuteReader();
 
-        List<string> players = new();
+        List<WatchedPlayer> players = new();
 
         while (reader.Read())
         {
-            players.Add(reader.GetString(0));
+            players.Add(new WatchedPlayer
+            {
+                Username = reader.GetString(0),
+                Uuid = reader.GetString(1)
+            });
         }
 
         return players;

@@ -1,18 +1,23 @@
-﻿namespace HPSkyStatusUpdator.Services;
+﻿using HPSkyStatusUpdator.Models;
+
+namespace HPSkyStatusUpdator.Services;
 
 public class PlayerWatcherService : BackgroundService
 {
     private readonly SettingsService _settings;
     private readonly UserService _users;
     private readonly HypixelPlayerService _hypixelPlayers;
+    private readonly NotificationService _notifications;
     public PlayerWatcherService(
         SettingsService settings,
         UserService users,
-        HypixelPlayerService hypixelPlayers)
+        HypixelPlayerService hypixelPlayers,
+        NotificationService notifications)
     {
         _settings = settings;
         _users = users;
         _hypixelPlayers = hypixelPlayers;
+        _notifications = notifications;
     }
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
@@ -26,22 +31,58 @@ public class PlayerWatcherService : BackgroundService
                 try
                 {
                     var status =
-                        await _hypixelPlayers.GetStatus(player);
+                        await _hypixelPlayers.GetStatusByUuid(player.Uuid);
+                    var oldStatus = _users.GetPlayerStatus(player.Username);
 
+                    if (oldStatus != null)
+                    {
+                        string? message = null;
+
+                        if (oldStatus.SkyBlockOnline != status.SkyBlockOnline)
+                        {
+                            message = status.SkyBlockOnline
+                                ? "Entered SkyBlock"
+                                : "Left SkyBlock";
+                        }
+                        else if (
+                            status.SkyBlockOnline &&
+                            oldStatus.Mode != status.Mode
+                        )
+                        {
+                            message = $"Changed to {status.DisplayMode}";
+                        }
+
+                        if (message != null)
+                        {
+                            foreach (var clientId in _users.GetClientsWatching(player.Uuid))
+                            {
+                                _notifications.Add(
+                                    clientId,
+                                    new Notification
+                                    {
+                                        ClientId = clientId,
+                                        Type = "player",
+                                        Title = player.Username,
+                                        Message = message
+                                    }
+                                );
+                            }
+                        }
+                    }
                     _users.UpdatePlayerStatus(
-                        player,
+                        player.Username,
                         status.SkyBlockOnline,
                         status.Mode
                     );
 
                     Console.WriteLine(
-                        $"{player}: Online={status.SkyBlockOnline}, Mode={status.Mode}"
+                        $"{player.Username}: Online={status.SkyBlockOnline}, Mode={status.Mode}"
                     );
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(
-                        $"Error checking {player}: {ex.Message}"
+                        $"Error checking {player.Username}: {ex.Message}"
                     );
                 }
             }

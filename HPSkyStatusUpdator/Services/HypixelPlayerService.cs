@@ -3,6 +3,7 @@ using System.Text.Json;
 
 namespace HPSkyStatusUpdator.Services;
 
+
 public class HypixelPlayerService
 {
     private readonly HttpClient _client;
@@ -24,62 +25,42 @@ public class HypixelPlayerService
         if (uuid == null)
             return new HypixelStatus();
 
+        return await GetStatusByUuid(uuid);
+    }
 
-        string apiKey = _settings.GetString(
-            "HypixelApiKey"
-        ) ?? "";
-
+    public async Task<HypixelStatus> GetStatusByUuid(string uuid)
+    {
+        string apiKey = _settings.GetString("HypixelApiKey") ?? "";
 
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             $"https://api.hypixel.net/v2/status?uuid={uuid}"
         );
 
-        request.Headers.Add(
-            "API-Key",
-            apiKey
-        );
+        request.Headers.Add("API-Key", apiKey);
 
-
-        using var response =
-            await _client.SendAsync(request);
-
+        using var response = await _client.SendAsync(request);
 
         if (!response.IsSuccessStatusCode)
             return new HypixelStatus();
 
+        string json = await response.Content.ReadAsStringAsync();
 
-        string json =
-            await response.Content.ReadAsStringAsync();
+        using JsonDocument doc = JsonDocument.Parse(json);
 
-
-        using JsonDocument doc =
-            JsonDocument.Parse(json);
-
-
-        var session =
-            doc.RootElement.GetProperty("session");
-
+        var session = doc.RootElement.GetProperty("session");
 
         return new HypixelStatus
         {
-            Online =
-                session.GetProperty("online")
-                .GetBoolean(),
-
-            GameType =
-                session.TryGetProperty("gameType", out var game)
+            Online = session.GetProperty("online").GetBoolean(),
+            GameType = session.TryGetProperty("gameType", out var game)
                 ? game.GetString() ?? ""
                 : "",
-
-            Mode =
-                session.TryGetProperty("mode", out var mode)
+            Mode = session.TryGetProperty("mode", out var mode)
                 ? mode.GetString() ?? ""
                 : ""
         };
     }
-
-
     public async Task<string?> GetUuid(string username)
     {
         using var response =
@@ -104,4 +85,6 @@ public class HypixelPlayerService
             .GetProperty("id")
             .GetString();
     }
+
+
 }
