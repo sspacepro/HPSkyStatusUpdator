@@ -375,6 +375,241 @@ public class UserService
         return command.ExecuteNonQuery() > 0;
     }
 
+    public bool AddAuctionWatch(AuctionWatch watch)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    INSERT OR IGNORE INTO AuctionWatchList
+    (
+        ClientId,
+        ItemTag,
+        Tier,
+        Stars,
+        Recombobulated,
+        PetLevel,
+        NotifyBelow,
+        LastLowestBin
+    )
+    VALUES
+    (
+        $clientId,
+        $itemTag,
+        $tier,
+        $stars,
+        $recomb,
+        $petLevel,
+        $notifyBelow,
+        0
+    );
+    """;
+
+        command.Parameters.AddWithValue(
+            "$clientId",
+            watch.ClientId
+        );
+
+        command.Parameters.AddWithValue(
+            "$itemTag",
+            watch.ItemTag
+        );
+
+        command.Parameters.AddWithValue(
+            "$tier",
+            (object?)watch.Tier ?? DBNull.Value
+        );
+
+        command.Parameters.AddWithValue(
+            "$stars",
+            (object?)watch.Stars ?? DBNull.Value
+        );
+
+        command.Parameters.AddWithValue(
+            "$recomb",
+            watch.Recombobulated.HasValue
+                ? watch.Recombobulated.Value ? 1 : 0
+                : DBNull.Value
+        );
+
+        command.Parameters.AddWithValue(
+            "$petLevel",
+            (object?)watch.PetLevel ?? DBNull.Value
+        );
+
+        command.Parameters.AddWithValue(
+            "$notifyBelow",
+            watch.NotifyBelow
+        );
+
+        return command.ExecuteNonQuery() > 0;
+    }
+
+    public List<AuctionWatch> GetAuctionWatches()
+    {
+        var watches = new List<AuctionWatch>();
+
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    SELECT
+        ClientId,
+        ItemTag,
+        Tier,
+        Stars,
+        Recombobulated,
+        PetLevel,
+        NotifyBelow,
+        LastLowestBin
+    FROM AuctionWatchList;
+    """;
+
+        using var reader = command.ExecuteReader();
+
+        while (reader.Read())
+        {
+            watches.Add(new AuctionWatch
+            {
+                ClientId = reader.GetString(0),
+                ItemTag = reader.GetString(1),
+
+                Tier = reader.IsDBNull(2)
+                    ? null
+                    : reader.GetString(2),
+
+                Stars = reader.IsDBNull(3)
+                    ? null
+                    : reader.GetInt32(3),
+
+                Recombobulated = reader.IsDBNull(4)
+                    ? null
+                    : reader.GetInt32(4) == 1,
+
+                PetLevel = reader.IsDBNull(5)
+                    ? null
+                    : reader.GetInt32(5),
+
+                NotifyBelow = reader.GetInt64(6),
+                LastLowestBin = reader.GetInt64(7)
+            });
+        }
+
+        return watches;
+    }
+
+    public void UpdateAuctionPrice(
+    string clientId,
+    string itemTag,
+    long price)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    UPDATE AuctionWatchList
+    SET LastLowestBin = $price
+    WHERE ClientId = $clientId
+    AND ItemTag = $itemTag;
+    """;
+
+        command.Parameters.AddWithValue(
+            "$price",
+            price
+        );
+
+        command.Parameters.AddWithValue(
+            "$clientId",
+            clientId
+        );
+
+        command.Parameters.AddWithValue(
+            "$itemTag",
+            itemTag
+        );
+
+        command.ExecuteNonQuery();
+    }
+    public bool RemoveWatchPlayer(
+    string clientId,
+    string username)
+    {
+        username = username.Trim().ToLowerInvariant();
+
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    DELETE FROM WatchList
+    WHERE ClientId = $clientId
+    AND Username = $username
+    """;
+
+        command.Parameters.AddWithValue(
+            "$clientId",
+            clientId
+        );
+
+        command.Parameters.AddWithValue(
+            "$username",
+            username
+        );
+
+        int rows = command.ExecuteNonQuery();
+
+        return rows > 0;
+    }
+    public List<object> GetWatchList(string clientId)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        SELECT Username, Uuid
+        FROM WatchList
+        WHERE ClientId = $clientId
+        """;
+
+        command.Parameters.AddWithValue(
+            "$clientId",
+            clientId
+        );
+
+        using var reader = command.ExecuteReader();
+
+        var players = new List<object>();
+
+        while (reader.Read())
+        {
+            players.Add(new
+            {
+                Username = reader.GetString(0),
+                Uuid = reader.GetString(1)
+            });
+        }
+
+        return players;
+    }
     public List<WatchedPlayer> GetUniqueWatchedPlayers()
     {
         using var connection = _database.GetConnection();

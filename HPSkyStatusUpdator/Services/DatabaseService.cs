@@ -87,6 +87,53 @@ public class DatabaseService
         """;
 
         playerStatusCommand.ExecuteNonQuery();
+
+        var auctionWatchCommand = connection.CreateCommand();
+
+        auctionWatchCommand.CommandText =
+        """
+        CREATE TABLE IF NOT EXISTS AuctionWatchList
+        (
+            ClientId TEXT NOT NULL,
+            ItemTag TEXT NOT NULL,
+
+            Tier TEXT,
+            Stars INTEGER,
+            Recombobulated INTEGER,
+            PetLevel INTEGER,
+
+            NotifyBelow INTEGER NOT NULL,
+            LastLowestBin INTEGER NOT NULL DEFAULT 0,
+
+            PRIMARY KEY(ClientId, ItemTag),
+
+            FOREIGN KEY(ClientId)
+                REFERENCES Users(ClientId)
+                ON DELETE CASCADE
+        );
+        """;
+
+        auctionWatchCommand.ExecuteNonQuery();
+
+
+
+        var auctionStatusCommand = connection.CreateCommand();
+
+        auctionStatusCommand.CommandText =
+        """
+        CREATE TABLE IF NOT EXISTS AuctionStatus
+        (
+            ItemTag TEXT NOT NULL PRIMARY KEY,
+            ItemName TEXT NOT NULL,
+            LowestBin INTEGER NOT NULL,
+            LastUpdated TEXT NOT NULL
+        );
+        """;
+
+        auctionStatusCommand.ExecuteNonQuery();
+
+
+
         if (!HasMigration(connection, 1))
         {
             Console.WriteLine("Applying migration 1...");
@@ -94,7 +141,10 @@ public class DatabaseService
 
             AddMigration(connection, 1);
         }
+
     }
+
+
 
     public SqliteConnection GetConnection()
     {

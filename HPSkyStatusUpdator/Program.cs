@@ -2,6 +2,7 @@ using HPSkyStatusUpdator.Configuration;
 using HPSkyStatusUpdator.Middleware;
 using HPSkyStatusUpdator.Models;
 using HPSkyStatusUpdator.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -27,6 +28,10 @@ builder.Services.AddHttpClient<HypixelPlayerService>();
 
 builder.Services.AddSingleton<NotificationService>();
 
+builder.Services.AddHttpClient<AuctionService>();
+
+builder.Services.AddSingleton<AuctionService>();
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -34,13 +39,30 @@ using (var scope = app.Services.CreateScope())
 }
 
 var hypixel = app.Services.GetRequiredService<HypixelService>();
-app.UseMiddleware<AuthenticationMiddleware>();
-app.UseMiddleware<RateLimitMiddleware>();
-app.UseMiddleware<AdminAuthenticationMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<AuthenticationMiddleware>();
+app.UseMiddleware<AdminAuthenticationMiddleware>();
+app.UseMiddleware<RateLimitMiddleware>();
 
 
+app.MapGet("/api/admin/auction/{itemTag}",
+async (
+    string itemTag,
+    AuctionService auctions
+) =>
+{
+    var watch = new AuctionWatch
+    {
+        ItemTag = itemTag
+    };
 
+    var result = await auctions.GetLowestBin(watch);
+
+    if (result == null)
+        return Results.NotFound("Item not found.");
+
+    return Results.Ok(result);
+});
 
 
 
@@ -72,8 +94,50 @@ app.MapGet("/api/admin/settings/hypixel-update-interval-seconds",
 });
 
 
+app.MapGet("/api/v1/playerstatus",
+(
+    HttpContext context,
+    UserService users
+) =>
+{
+    var user = (User)context.Items["User"]!;
 
+    return Results.Ok(
+        users.GetPlayerStatuses(user.ClientId)
+    );
+});
+app.MapDelete("/api/v1/watch/{username}",
+(
+    HttpContext context,
+    string username,
+    UserService users
+) =>
+{
+    var user = (User)context.Items["User"]!;
 
+    if (!users.RemoveWatchPlayer(
+        user.ClientId,
+        username))
+    {
+        return Results.NotFound(
+            "Player is not being watched."
+        );
+    }
+
+    return Results.Ok();
+});
+app.MapGet("/api/v1/watch",
+(
+    HttpContext context,
+    UserService users
+) =>
+{
+    var user = (User)context.Items["User"]!;
+
+    return Results.Ok(
+        users.GetWatchList(user.ClientId)
+    );
+});
 app.MapGet("/api/v1/notifications",
 (
     HttpContext context,
@@ -226,6 +290,19 @@ app.MapGet("/api/v1/watch/status",
         users.GetPlayerStatuses(user.ClientId)
     );
 });
+app.MapPost("/api/admin/shutdown",
+(
+    IHostApplicationLifetime lifetime
+) =>
+{
+    Task.Run(() =>
+    {
+        Thread.Sleep(5000);
+        lifetime.StopApplication();
+    });
+
+    return Results.Ok("Server shutting down.");
+});
 app.MapPost("/api/admin/settings/{key}",
 (
     string key,
@@ -233,6 +310,12 @@ app.MapPost("/api/admin/settings/{key}",
     SettingsService settings
 ) =>
 {
+    if (key == "AdminKey")
+    {
+        return Results.BadRequest(
+            "Cannot modify AdminKey through API."
+        );
+    }
     settings.Set(key, value);
     return Results.Ok();
 });
