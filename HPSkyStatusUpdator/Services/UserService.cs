@@ -387,6 +387,7 @@ public class UserService
         """
     INSERT OR IGNORE INTO AuctionWatchList
     (
+        WatchId,
         ClientId,
         ItemTag,
         Tier,
@@ -398,6 +399,7 @@ public class UserService
     )
     VALUES
     (
+        $watchId,
         $clientId,
         $itemTag,
         $tier,
@@ -408,7 +410,10 @@ public class UserService
         0
     );
     """;
-
+        command.Parameters.AddWithValue(
+            "$watchId",
+             watch.WatchId
+        );
         command.Parameters.AddWithValue(
             "$clientId",
             watch.ClientId
@@ -462,6 +467,7 @@ public class UserService
         command.CommandText =
         """
     SELECT
+        WatchId,
         ClientId,
         ItemTag,
         Tier,
@@ -469,7 +475,8 @@ public class UserService
         Recombobulated,
         PetLevel,
         NotifyBelow,
-        LastLowestBin
+        LastLowestBin,
+        Available
     FROM AuctionWatchList;
     """;
 
@@ -479,27 +486,31 @@ public class UserService
         {
             watches.Add(new AuctionWatch
             {
-                ClientId = reader.GetString(0),
-                ItemTag = reader.GetString(1),
+                WatchId = reader.GetString(0),
+                ClientId = reader.GetString(1),
+                ItemTag = reader.GetString(2),
 
-                Tier = reader.IsDBNull(2)
+                Tier = reader.IsDBNull(3)
                     ? null
-                    : reader.GetString(2),
+                    : reader.GetString(3),
 
-                Stars = reader.IsDBNull(3)
+                Stars = reader.IsDBNull(4)
                     ? null
-                    : reader.GetInt32(3),
+                    : reader.GetInt32(4),
 
-                Recombobulated = reader.IsDBNull(4)
+                Recombobulated = reader.IsDBNull(5)
                     ? null
-                    : reader.GetInt32(4) == 1,
+                    : reader.GetInt32(5) == 1,
 
-                PetLevel = reader.IsDBNull(5)
+                PetLevel = reader.IsDBNull(6)
                     ? null
-                    : reader.GetInt32(5),
+                    : reader.GetInt32(6),
 
-                NotifyBelow = reader.GetInt64(6),
-                LastLowestBin = reader.GetInt64(7)
+                NotifyBelow = reader.GetInt64(7),
+
+                LastLowestBin = reader.GetInt64(8),
+
+                Available = reader.GetInt32(9) == 1
             });
         }
 
@@ -507,9 +518,9 @@ public class UserService
     }
 
     public void UpdateAuctionPrice(
-    string clientId,
-    string itemTag,
-    long price)
+        AuctionWatch watch,
+        long price,
+        bool available)
     {
         using var connection = _database.GetConnection();
 
@@ -519,16 +530,40 @@ public class UserService
 
         command.CommandText =
         """
-    UPDATE AuctionWatchList
-    SET LastLowestBin = $price
-    WHERE ClientId = $clientId
-    AND ItemTag = $itemTag;
-    """;
-
+        UPDATE AuctionWatchList
+        SET LastLowestBin = $price,
+            Available = $available
+        WHERE WatchId = $watchId;
+        """;
+         
+        command.Parameters.AddWithValue("$price", price);
+        command.Parameters.AddWithValue("$available", available ? 1 : 0);
+        command.Parameters.AddWithValue("$clientId", watch.ClientId);
+        command.Parameters.AddWithValue("$itemTag", watch.ItemTag);
         command.Parameters.AddWithValue(
-            "$price",
-            price
+            "$watchId",
+            watch.WatchId
         );
+
+        command.ExecuteNonQuery();
+    }
+
+    public bool RemoveAuctionWatch(
+    string clientId,
+    string watchId)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    DELETE FROM AuctionWatchList
+    WHERE ClientId = $clientId
+    AND WatchId = $watchId;
+    """;
 
         command.Parameters.AddWithValue(
             "$clientId",
@@ -536,11 +571,11 @@ public class UserService
         );
 
         command.Parameters.AddWithValue(
-            "$itemTag",
-            itemTag
+            "$watchId",
+            watchId
         );
 
-        command.ExecuteNonQuery();
+        return command.ExecuteNonQuery() > 0;
     }
     public bool RemoveWatchPlayer(
     string clientId,

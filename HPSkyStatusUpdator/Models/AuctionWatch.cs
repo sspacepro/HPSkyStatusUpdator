@@ -17,4 +17,8 @@ public class AuctionWatch
     public long NotifyBelow { get; set; }
 
     public long LastLowestBin { get; set; }
+
+    public bool Available { get; set; }
+
+    public string WatchId { get; set; } = Guid.NewGuid().ToString();
 }

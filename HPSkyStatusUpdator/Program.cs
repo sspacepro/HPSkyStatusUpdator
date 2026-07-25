@@ -32,6 +32,11 @@ builder.Services.AddHttpClient<AuctionService>();
 
 builder.Services.AddSingleton<AuctionService>();
 
+builder.Services.AddHostedService<PlayerWatcherService>();
+
+builder.Services.AddHostedService<AuctionWatcherService>();
+
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -56,7 +61,16 @@ async (
         ItemTag = itemTag
     };
 
-    var result = await auctions.GetLowestBin(watch);
+    var search = new AuctionSearch
+    {
+        ItemTag = watch.ItemTag,
+        Tier = watch.Tier,
+        Stars = watch.Stars,
+        Recombobulated = watch.Recombobulated,
+        PetLevel = watch.PetLevel
+    };
+
+    var result = await auctions.GetLowestBin(search);
 
     if (result == null)
         return Results.NotFound("Item not found.");
@@ -65,6 +79,81 @@ async (
 });
 
 
+
+app.MapDelete("/api/v1/auction/watch/{watchId}",
+(
+    HttpContext context,
+    string watchId,
+    UserService users
+) =>
+{
+    var user = (User)context.Items["User"]!;
+
+    if (!users.RemoveAuctionWatch(
+        user.ClientId,
+        watchId))
+    {
+        return Results.NotFound(
+            "Auction watch not found."
+        );
+    }
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/v1/auction/watch",
+(
+    HttpContext context,
+    UserService users
+) =>
+{
+    var user = (User)context.Items["User"]!;
+
+    return Results.Ok(
+        users.GetAuctionWatches()
+            .Where(x => x.ClientId == user.ClientId)
+    );
+});
+
+app.MapPost("/api/v1/auction/watch",
+(
+    HttpContext context,
+    UserService users,
+    AuctionWatchRequest request
+) =>
+{
+    var user = (User)context.Items["User"]!;
+
+    var watch = new AuctionWatch
+    {
+        ClientId = user.ClientId,
+
+        ItemTag = request.ItemTag
+            .Trim()
+            .ToUpperInvariant(),
+
+        Tier = request.Tier,
+
+        Stars = request.Stars,
+
+        Recombobulated = request.Recombobulated,
+
+        PetLevel = request.PetLevel,
+
+        NotifyBelow = request.NotifyBelow
+    };
+
+
+    if (!users.AddAuctionWatch(watch))
+    {
+        return Results.BadRequest(
+            "Auction watch already exists."
+        );
+    }
+
+
+    return Results.Ok(watch);
+});
 
 app.MapPost("/api/admin/settings/hypixel-update-interval-seconds/{seconds}",
 (
@@ -336,4 +425,14 @@ app.MapGet("/api/admin/settings/{key}",
 
 app.Run();
 record RegisterRequest(string Username);
+
+
+record AuctionWatchRequest(
+    string ItemTag,
+    string? Tier,
+    int? Stars,
+    bool? Recombobulated,
+    int? PetLevel,
+    long NotifyBelow
+);
 

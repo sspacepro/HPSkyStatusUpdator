@@ -94,6 +94,8 @@ public class DatabaseService
         """
         CREATE TABLE IF NOT EXISTS AuctionWatchList
         (
+            WatchId TEXT NOT NULL PRIMARY KEY,
+
             ClientId TEXT NOT NULL,
             ItemTag TEXT NOT NULL,
 
@@ -105,7 +107,16 @@ public class DatabaseService
             NotifyBelow INTEGER NOT NULL,
             LastLowestBin INTEGER NOT NULL DEFAULT 0,
 
-            PRIMARY KEY(ClientId, ItemTag),
+            Available INTEGER NOT NULL DEFAULT 0,
+
+            UNIQUE(
+                ClientId,
+                ItemTag,
+                Tier,
+                Stars,
+                Recombobulated,
+                PetLevel
+            ),
 
             FOREIGN KEY(ClientId)
                 REFERENCES Users(ClientId)
@@ -141,6 +152,66 @@ public class DatabaseService
 
             AddMigration(connection, 1);
         }
+        if (!HasMigration(connection, 3))
+        {
+            Console.WriteLine("Applying migration 3...");
+
+            var command2 = connection.CreateCommand();
+
+            command2.CommandText =
+            """
+            CREATE TABLE AuctionWatchList_New
+            (
+                ClientId TEXT NOT NULL,
+                ItemTag TEXT NOT NULL,
+
+                Tier TEXT,
+                Stars INTEGER,
+                Recombobulated INTEGER,
+                PetLevel INTEGER,
+
+                NotifyBelow INTEGER NOT NULL,
+                LastLowestBin INTEGER NOT NULL DEFAULT 0,
+                Available INTEGER NOT NULL DEFAULT 0,
+
+                PRIMARY KEY(
+                    ClientId,
+                    ItemTag,
+                    Tier,
+                    Stars,
+                    Recombobulated,
+                    PetLevel
+                ),
+
+                FOREIGN KEY(ClientId)
+                    REFERENCES Users(ClientId)
+                    ON DELETE CASCADE
+            );
+
+            INSERT INTO AuctionWatchList_New
+            SELECT
+                ClientId,
+                ItemTag,
+                Tier,
+                Stars,
+                Recombobulated,
+                PetLevel,
+                NotifyBelow,
+                LastLowestBin,
+                Available
+            FROM AuctionWatchList;
+
+            DROP TABLE AuctionWatchList;
+
+            ALTER TABLE AuctionWatchList_New
+            RENAME TO AuctionWatchList;
+            """;
+
+            command.ExecuteNonQuery();
+
+            AddMigration(connection, 3);
+        }
+
 
     }
 
