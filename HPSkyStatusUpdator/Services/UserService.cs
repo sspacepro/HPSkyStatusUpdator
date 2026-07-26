@@ -378,7 +378,7 @@ public class UserService
         return command.ExecuteNonQuery() > 0;
     }
 
-    public bool AddAuctionWatch(AuctionWatch watch)
+    public AuctionWatchAddResult AddAuctionWatch(AuctionWatch watch)
     {
         using var connection = _database.GetConnection();
 
@@ -440,7 +440,7 @@ public class UserService
 
         if (exists > 0)
         {
-            return false;
+            return AuctionWatchAddResult.Duplicate;
         }
 
         var countCommand = connection.CreateCommand();
@@ -468,14 +468,14 @@ public class UserService
 
         if (count >= maxWatches)
         {
-            return false;
+            return AuctionWatchAddResult.LimitReached;
         }
 
         var command = connection.CreateCommand();
 
         command.CommandText =
         """
-    INSERT OR IGNORE INTO AuctionWatchList
+    INSERT INTO AuctionWatchList
     (
         WatchId,
         ClientId,
@@ -543,12 +543,14 @@ public class UserService
 
         try
         {
-            return command.ExecuteNonQuery() > 0;
+            return command.ExecuteNonQuery() > 0
+                ? AuctionWatchAddResult.Success
+                : AuctionWatchAddResult.Duplicate;
         }
         catch (SqliteException ex)
             when (ex.SqliteErrorCode == 19) // UNIQUE constraint failed
         {
-            return false;
+            return AuctionWatchAddResult.Duplicate;
         }
     }
 
@@ -636,8 +638,6 @@ public class UserService
          
         command.Parameters.AddWithValue("$price", price);
         command.Parameters.AddWithValue("$available", available ? 1 : 0);
-        command.Parameters.AddWithValue("$clientId", watch.ClientId);
-        command.Parameters.AddWithValue("$itemTag", watch.ItemTag);
         command.Parameters.AddWithValue(
             "$watchId",
             watch.WatchId
@@ -774,6 +774,27 @@ public class UserService
 
         return players;
     }
+
+    public List<AuctionWatchResponse> GetAuctionWatchResponses(
+    string clientId)
+    {
+        return GetAuctionWatches()
+            .Where(x => x.ClientId == clientId)
+            .Select(x => new AuctionWatchResponse
+            {
+                WatchId = x.WatchId,
+                ItemTag = x.ItemTag,
+                Tier = x.Tier,
+                Stars = x.Stars,
+                Recombobulated = x.Recombobulated,
+                PetLevel = x.PetLevel,
+                NotifyBelow = x.NotifyBelow,
+                LastLowestBin = x.LastLowestBin,
+                Available = x.Available
+            })
+            .ToList();
+    }
+
     public User Register(string username, string ip)
     {
         username = username.Trim();

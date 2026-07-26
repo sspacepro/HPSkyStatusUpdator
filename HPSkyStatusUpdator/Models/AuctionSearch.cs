@@ -10,7 +10,7 @@ public class AuctionSearch
 
     public bool? Recombobulated { get; set; }
 
-    public int? PetLevel { get; set; }
+    public long? PetXp { get; set; }
 
     public override bool Equals(object? obj)
     {
@@ -21,7 +21,7 @@ public class AuctionSearch
             && Tier == other.Tier
             && Stars == other.Stars
             && Recombobulated == other.Recombobulated
-            && PetLevel == other.PetLevel;
+            && PetXp == other.PetXp;
     }
 
     public override int GetHashCode()
@@ -31,7 +31,7 @@ public class AuctionSearch
             Tier,
             Stars,
             Recombobulated,
-            PetLevel
+            PetXp
         );
     }
 }

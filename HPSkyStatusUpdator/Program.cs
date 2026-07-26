@@ -36,6 +36,7 @@ builder.Services.AddHostedService<PlayerWatcherService>();
 
 builder.Services.AddHostedService<AuctionWatcherService>();
 
+builder.Services.AddSingleton<NotificationService>();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -48,6 +49,31 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<AdminAuthenticationMiddleware>();
 app.UseMiddleware<RateLimitMiddleware>();
+
+
+app.MapGet("/api/v1/client/settings",
+(
+    HttpContext context,
+    SettingsService settings
+) =>
+{
+    var user = (User)context.Items["User"]!;
+
+    return Results.Ok(new
+    {
+        MaxAuctionWatchesPerClient =
+            settings.GetInt(
+                SettingKeys.MaxAuctionWatchesPerClient,
+                5
+            ),
+
+        MaxWatchedPlayers =
+            settings.GetInt(
+                SettingKeys.MaxWatchedPlayers,
+                3
+            )
+    });
+});
 
 app.MapPost("/api/admin/settings/max-auction-watches/{amount}",
 (
@@ -137,8 +163,9 @@ app.MapGet("/api/v1/auction/watch",
     var user = (User)context.Items["User"]!;
 
     return Results.Ok(
-        users.GetAuctionWatches()
-            .Where(x => x.ClientId == user.ClientId)
+        users.GetAuctionWatchResponses(
+            user.ClientId
+        )
     );
 });
 
@@ -171,15 +198,26 @@ app.MapPost("/api/v1/auction/watch",
     };
 
 
-    if (!users.AddAuctionWatch(watch))
+    var result = users.AddAuctionWatch(watch);
+
+    return result switch
     {
-        return Results.BadRequest(
-            "Cannot add auction watch."
-        );
-    }
+        AuctionWatchAddResult.Success =>
+            Results.Ok(watch),
 
+        AuctionWatchAddResult.Duplicate =>
+            Results.BadRequest(
+                "This auction watch already exists."
+            ),
 
-    return Results.Ok(watch);
+        AuctionWatchAddResult.LimitReached =>
+            Results.BadRequest(
+                "You have reached your auction watch limit."
+            ),
+
+        _ =>
+            Results.BadRequest()
+    };
 });
 
 app.MapPost("/api/admin/settings/hypixel-update-interval-seconds/{seconds}",
@@ -459,7 +497,7 @@ record AuctionWatchRequest(
     string? Tier,
     int? Stars,
     bool? Recombobulated,
-    int? PetLevel,
+    long? PetXp,
     long NotifyBelow
 );
 

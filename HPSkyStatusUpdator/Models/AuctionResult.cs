@@ -14,5 +14,5 @@ public class AuctionResult
 
     public bool Recombobulated { get; set; }
 
-    public int? PetLevel { get; set; }
+    public long? PetXp { get; set; }
 }

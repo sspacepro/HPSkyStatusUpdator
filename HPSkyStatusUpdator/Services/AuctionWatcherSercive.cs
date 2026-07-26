@@ -1,4 +1,5 @@
 ﻿using HPSkyStatusUpdator.Models;
+
 namespace HPSkyStatusUpdator.Services;
 
 public class AuctionWatcherService : BackgroundService
@@ -6,15 +7,18 @@ public class AuctionWatcherService : BackgroundService
     private readonly UserService _users;
     private readonly AuctionService _auctions;
     private readonly SettingsService _settings;
+    private readonly NotificationService _notifications;
 
     public AuctionWatcherService(
         UserService users,
         AuctionService auctions,
-        SettingsService settings)
+        SettingsService settings,
+        NotificationService notifications)
     {
         _users = users;
         _auctions = auctions;
         _settings = settings;
+        _notifications = notifications;
     }
 
 
@@ -24,6 +28,7 @@ public class AuctionWatcherService : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var watches = _users.GetAuctionWatches();
+
             var searches = watches
                 .Select(w => new AuctionSearch
                 {
@@ -36,12 +41,15 @@ public class AuctionWatcherService : BackgroundService
                 .Distinct()
                 .ToList();
 
+
             foreach (var search in searches)
             {
                 try
                 {
+                    // One CoflNet request per unique search
                     var result =
                         await _auctions.GetLowestBin(search);
+
 
                     Console.WriteLine(
                         $"{search.ItemTag}: {(result == null ? "unavailable" : result.LowestBin.ToString("N0"))}"
@@ -50,6 +58,7 @@ public class AuctionWatcherService : BackgroundService
 
                     foreach (var watch in watches)
                     {
+                        // Only update watches matching this search
                         if (watch.ItemTag != search.ItemTag)
                             continue;
 
@@ -66,6 +75,7 @@ public class AuctionWatcherService : BackgroundService
                             continue;
 
 
+                        // Item no longer available
                         if (result == null)
                         {
                             _users.UpdateAuctionPrice(
@@ -73,15 +83,44 @@ public class AuctionWatcherService : BackgroundService
                                 0,
                                 false
                             );
+
+                            continue;
                         }
-                        else
+
+
+                        // Send notification only for a new price
+                        if (result.LowestBin <= watch.NotifyBelow
+                            && result.LowestBin != watch.LastLowestBin)
                         {
-                            _users.UpdateAuctionPrice(
-                                watch,
-                                result.LowestBin,
-                                true
+                            _notifications.Add(
+                                watch.ClientId,
+                                new Models.Notification
+                                {
+                                    ClientId = watch.ClientId,
+
+                                    Type = "AUCTION",
+
+                                    Title =
+                                        $"{watch.ItemTag} Found",
+
+                                    Message =
+                                        $"{watch.ItemTag} is {result.LowestBin:N0} coins."
+                                }
                             );
                         }
+
+
+                        // Always update the current price
+                        _users.UpdateAuctionPrice(
+                            watch,
+                            result.LowestBin,
+                            true
+                        );
+
+
+                        Console.WriteLine(
+                            $"Updated {watch.ClientId}: {watch.ItemTag} {result.LowestBin:N0}"
+                        );
                     }
                 }
                 catch (Exception ex)

@@ -78,6 +78,24 @@ public class AuctionService
     JsonElement auction,
     AuctionSearch search)
     {
+        if (search.PetXp.HasValue)
+        {
+            if (!auction.TryGetProperty(
+                "petInfo",
+                out var petInfo))
+                return false;
+
+
+            if (!petInfo.TryGetProperty(
+                "exp",
+                out var xp))
+                return false;
+
+
+            if (xp.GetInt64() < search.PetXp.Value)
+                return false;
+        }
+
         if (search.Tier != null)
         {
             string tier =

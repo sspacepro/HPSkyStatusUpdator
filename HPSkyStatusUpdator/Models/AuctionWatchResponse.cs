@@ -1,8 +1,8 @@
 ﻿namespace HPSkyStatusUpdator.Models;
 
-public class AuctionWatch
+public class AuctionWatchResponse
 {
-    public string ClientId { get; set; } = "";
+    public string WatchId { get; set; } = "";
 
     public string ItemTag { get; set; } = "";
 
@@ -19,6 +19,4 @@ public class AuctionWatch
     public long LastLowestBin { get; set; }
 
     public bool Available { get; set; }
-
-    public string WatchId { get; set; } = Guid.NewGuid().ToString();
 }
