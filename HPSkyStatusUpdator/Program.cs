@@ -49,6 +49,33 @@ app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<AdminAuthenticationMiddleware>();
 app.UseMiddleware<RateLimitMiddleware>();
 
+app.MapPost("/api/admin/settings/max-auction-watches/{amount}",
+(
+    int amount,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.MaxAuctionWatchesPerClient,
+        amount
+    );
+
+    return Results.Ok();
+});
+
+
+app.MapGet("/api/admin/settings/max-auction-watches",
+(
+    SettingsService settings
+) =>
+{
+    return Results.Ok(
+        settings.GetInt(
+            SettingKeys.MaxAuctionWatchesPerClient,
+            10
+        )
+    );
+});
 
 app.MapGet("/api/admin/auction/{itemTag}",
 async (
@@ -147,7 +174,7 @@ app.MapPost("/api/v1/auction/watch",
     if (!users.AddAuctionWatch(watch))
     {
         return Results.BadRequest(
-            "Auction watch already exists."
+            "Cannot add auction watch."
         );
     }
 

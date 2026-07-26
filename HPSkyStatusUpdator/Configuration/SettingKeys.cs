@@ -10,4 +10,5 @@ public static class SettingKeys
     public const string MinClientVersion = "MinClientVersion";
     public const string HypixelUpdateIntervalSeconds = "HypixelUpdateIntervalSeconds";
     public const string AdminKey = "AdminKey";
+    public const string MaxAuctionWatchesPerClient = "MaxAuctionWatchesPerClient";
 }

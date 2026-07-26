@@ -1,5 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
-
+﻿
 namespace HPSkyStatusUpdator.Services;
 
 public class SettingsService

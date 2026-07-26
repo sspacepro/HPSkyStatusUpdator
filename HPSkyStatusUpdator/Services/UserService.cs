@@ -1,4 +1,6 @@
-﻿using HPSkyStatusUpdator.Models;
+﻿using HPSkyStatusUpdator.Configuration;
+using HPSkyStatusUpdator.Models;
+using Microsoft.Data.Sqlite;
 
 namespace HPSkyStatusUpdator.Services;
 
@@ -56,7 +58,7 @@ public class UserService
         };
     }
     private readonly DatabaseService _database;
-
+    private readonly SettingsService _settings;
     public List<string> GetWatchedPlayers()
     {
         using var connection = _database.GetConnection();
@@ -176,9 +178,10 @@ public class UserService
 
         return results;
     }
-    public UserService(DatabaseService database)
+    public UserService(DatabaseService database, SettingsService settings)
     {
         _database = database;
+        _settings = settings;
     }
 
     public List<User> GetAllUsers()
@@ -380,6 +383,93 @@ public class UserService
         using var connection = _database.GetConnection();
 
         connection.Open();
+        var existsCommand = connection.CreateCommand();
+
+        existsCommand.CommandText =
+        """
+        SELECT COUNT(*)
+        FROM AuctionWatchList
+        WHERE ClientId = $clientId
+        AND ItemTag = $itemTag
+        AND (
+            Tier = $tier
+            OR (Tier IS NULL AND $tier IS NULL)
+        )
+        AND (
+            Stars = $stars
+            OR (Stars IS NULL AND $stars IS NULL)
+        )
+        AND (
+            Recombobulated = $recomb
+            OR (Recombobulated IS NULL AND $recomb IS NULL)
+        )
+        AND (
+            PetLevel = $petLevel
+            OR (PetLevel IS NULL AND $petLevel IS NULL)
+        );
+        """;
+
+        existsCommand.Parameters.AddWithValue(
+    "$clientId",
+    watch.ClientId);
+
+        existsCommand.Parameters.AddWithValue(
+            "$itemTag",
+            watch.ItemTag);
+
+        existsCommand.Parameters.AddWithValue(
+            "$tier",
+            (object?)watch.Tier ?? DBNull.Value);
+
+        existsCommand.Parameters.AddWithValue(
+            "$stars",
+            (object?)watch.Stars ?? DBNull.Value);
+
+        existsCommand.Parameters.AddWithValue(
+            "$recomb",
+            watch.Recombobulated.HasValue
+                ? (watch.Recombobulated.Value ? 1 : 0)
+                : DBNull.Value);
+
+        existsCommand.Parameters.AddWithValue(
+            "$petLevel",
+            (object?)watch.PetLevel ?? DBNull.Value);
+
+        long exists =
+    (long)existsCommand.ExecuteScalar()!;
+
+        if (exists > 0)
+        {
+            return false;
+        }
+
+        var countCommand = connection.CreateCommand();
+
+        countCommand.CommandText =
+        """
+        SELECT COUNT(*)
+        FROM AuctionWatchList
+        WHERE ClientId = $clientId;
+        """;
+
+        countCommand.Parameters.AddWithValue(
+            "$clientId",
+            watch.ClientId
+        );
+
+        long count =
+            (long)countCommand.ExecuteScalar()!;
+
+
+        int maxWatches = _settings.GetInt(
+            SettingKeys.MaxAuctionWatchesPerClient,
+            5
+        );
+
+        if (count >= maxWatches)
+        {
+            return false;
+        }
 
         var command = connection.CreateCommand();
 
@@ -451,7 +541,15 @@ public class UserService
             watch.NotifyBelow
         );
 
-        return command.ExecuteNonQuery() > 0;
+        try
+        {
+            return command.ExecuteNonQuery() > 0;
+        }
+        catch (SqliteException ex)
+            when (ex.SqliteErrorCode == 19) // UNIQUE constraint failed
+        {
+            return false;
+        }
     }
 
     public List<AuctionWatch> GetAuctionWatches()
