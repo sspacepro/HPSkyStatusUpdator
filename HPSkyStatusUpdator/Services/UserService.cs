@@ -404,8 +404,8 @@ public class UserService
             OR (Recombobulated IS NULL AND $recomb IS NULL)
         )
         AND (
-            PetLevel = $petLevel
-            OR (PetLevel IS NULL AND $petLevel IS NULL)
+            PetXp = $petXp
+            OR (PetXp IS NULL AND $petXp IS NULL)
         );
         """;
 
@@ -432,8 +432,8 @@ public class UserService
                 : DBNull.Value);
 
         existsCommand.Parameters.AddWithValue(
-            "$petLevel",
-            (object?)watch.PetLevel ?? DBNull.Value);
+            "$petXp",
+            (object?)watch.PetXp ?? DBNull.Value);
 
         long exists =
     (long)existsCommand.ExecuteScalar()!;
@@ -483,7 +483,7 @@ public class UserService
         Tier,
         Stars,
         Recombobulated,
-        PetLevel,
+        PetXp,
         NotifyBelow,
         LastLowestBin
     )
@@ -495,7 +495,7 @@ public class UserService
         $tier,
         $stars,
         $recomb,
-        $petLevel,
+        $petXp,
         $notifyBelow,
         0
     );
@@ -532,8 +532,8 @@ public class UserService
         );
 
         command.Parameters.AddWithValue(
-            "$petLevel",
-            (object?)watch.PetLevel ?? DBNull.Value
+            "$petXp",
+            (object?)watch.PetXp ?? DBNull.Value
         );
 
         command.Parameters.AddWithValue(
@@ -573,7 +573,7 @@ public class UserService
         Tier,
         Stars,
         Recombobulated,
-        PetLevel,
+        PetXp,
         NotifyBelow,
         LastLowestBin,
         Available
@@ -602,7 +602,7 @@ public class UserService
                     ? null
                     : reader.GetInt32(5) == 1,
 
-                PetLevel = reader.IsDBNull(6)
+                PetXp = reader.IsDBNull(6)
                     ? null
                     : reader.GetInt32(6),
 
@@ -787,7 +787,7 @@ public class UserService
                 Tier = x.Tier,
                 Stars = x.Stars,
                 Recombobulated = x.Recombobulated,
-                PetLevel = x.PetLevel,
+                PetXp = x.PetXp,
                 NotifyBelow = x.NotifyBelow,
                 LastLowestBin = x.LastLowestBin,
                 Available = x.Available

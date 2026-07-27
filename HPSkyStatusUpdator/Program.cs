@@ -2,6 +2,8 @@ using HPSkyStatusUpdator.Configuration;
 using HPSkyStatusUpdator.Middleware;
 using HPSkyStatusUpdator.Models;
 using HPSkyStatusUpdator.Services;
+using System.IO;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +51,17 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<AdminAuthenticationMiddleware>();
 app.UseMiddleware<RateLimitMiddleware>();
+
+
+var logFile = new StreamWriter("console.log", append: true)
+{
+    AutoFlush = true
+};
+
+Console.SetOut(new MultiTextWriter(
+    Console.Out,
+    logFile
+));
 
 
 app.MapGet("/api/v1/client/settings",
@@ -120,7 +133,7 @@ async (
         Tier = watch.Tier,
         Stars = watch.Stars,
         Recombobulated = watch.Recombobulated,
-        PetLevel = watch.PetLevel
+        PetXp = watch.PetXp
     };
 
     var result = await auctions.GetLowestBin(search);
@@ -192,7 +205,7 @@ app.MapPost("/api/v1/auction/watch",
 
         Recombobulated = request.Recombobulated,
 
-        PetLevel = request.PetLevel,
+        PetXp = request.PetXp,
 
         NotifyBelow = request.NotifyBelow
     };

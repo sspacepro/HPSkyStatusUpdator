@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using HPSkyStatusUpdator.Models;
 
+
 namespace HPSkyStatusUpdator.Services;
 
 public class HypixelAuctionService
@@ -47,37 +48,7 @@ public class HypixelAuctionService
 
             auctions.Add(new HypixelAuction
             {
-                Uuid =
-                    item.GetProperty("uuid")
-                    .GetString() ?? "",
-
-                ItemName =
-                    item.GetProperty("item_name")
-                    .GetString() ?? "",
-
-                ItemLore =
-                    item.GetProperty("item_lore")
-                    .GetString() ?? "",
-
-                Extra =
-                    item.TryGetProperty("extra", out var extra)
-                    ? extra.GetString()
-                    : null,
-
-                Tier =
-                    item.GetProperty("tier")
-                    .GetString() ?? "",
-
-                StartingBid =
-                    item.GetProperty("starting_bid")
-                    .GetInt64(),
-
-                Bin = true,
-
-                ItemBytes =
-                    item.TryGetProperty("item_bytes", out var bytes)
-                    ? bytes.GetString()
-                    : null
+                Json = item.Clone()
             });
         }
 

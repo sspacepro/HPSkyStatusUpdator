@@ -29,6 +29,15 @@ public class AuctionWatcherService : BackgroundService
         {
             var watches = _users.GetAuctionWatches();
 
+            Console.WriteLine($"Auction watches: {watches.Count}");
+
+            foreach (var watch in watches)
+            {
+                Console.WriteLine(
+                    $"Watching {watch.ItemTag} Tier:{watch.Tier} Stars:{watch.Stars}"
+                );
+            }
+
             var searches = watches
                 .Select(w => new AuctionSearch
                 {
@@ -36,7 +45,7 @@ public class AuctionWatcherService : BackgroundService
                     Tier = w.Tier,
                     Stars = w.Stars,
                     Recombobulated = w.Recombobulated,
-                    PetLevel = w.PetLevel
+                    PetXp = w.PetXp
                 })
                 .Distinct()
                 .ToList();
@@ -71,7 +80,7 @@ public class AuctionWatcherService : BackgroundService
                         if (watch.Recombobulated != search.Recombobulated)
                             continue;
 
-                        if (watch.PetLevel != search.PetLevel)
+                        if (watch.PetXp != search.PetXp)
                             continue;
 
 
