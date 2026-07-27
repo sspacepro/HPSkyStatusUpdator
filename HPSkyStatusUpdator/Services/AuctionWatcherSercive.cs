@@ -49,19 +49,32 @@ public class AuctionWatcherService : BackgroundService
                 })
                 .Distinct()
                 .ToList();
-
+            var result = await _auctions.GetAllAuctions();
 
             foreach (var search in searches)
             {
                 try
                 {
-                    // One CoflNet request per unique search
-                    var result =
-                        await _auctions.GetLowestBin(search);
+
+
+
+
+                    var lowest = result
+                        .Where(a =>
+                            a.ItemId.Equals(
+                                search.ItemTag,
+                                StringComparison.OrdinalIgnoreCase))
+                        .Where(a =>
+                            search.Tier == null ||
+                            a.Tier.Equals(
+                                search.Tier,
+                                StringComparison.OrdinalIgnoreCase))
+                        .OrderBy(a => a.Price)
+                        .FirstOrDefault();
 
 
                     Console.WriteLine(
-                        $"{search.ItemTag}: {(result == null ? "unavailable" : result.LowestBin.ToString("N0"))}"
+                        $"{search.ItemTag}: {(lowest == null ? "unavailable" : lowest.Price.ToString("N0"))}"
                     );
 
 
@@ -85,7 +98,7 @@ public class AuctionWatcherService : BackgroundService
 
 
                         // Item no longer available
-                        if (result == null)
+                        if (lowest == null)
                         {
                             _users.UpdateAuctionPrice(
                                 watch,
@@ -98,8 +111,8 @@ public class AuctionWatcherService : BackgroundService
 
 
                         // Send notification only for a new price
-                        if (result.LowestBin <= watch.NotifyBelow
-                            && result.LowestBin != watch.LastLowestBin)
+                        if (lowest.Price <= watch.NotifyBelow
+                        && lowest.Price != watch.LastLowestBin)
                         {
                             _notifications.Add(
                                 watch.ClientId,
@@ -113,7 +126,7 @@ public class AuctionWatcherService : BackgroundService
                                         $"{watch.ItemTag} Found",
 
                                     Message =
-                                        $"{watch.ItemTag} is {result.LowestBin:N0} coins."
+                                        $"{watch.ItemTag} is {lowest.Price:N0} coins."
                                 }
                             );
                         }
@@ -122,13 +135,13 @@ public class AuctionWatcherService : BackgroundService
                         // Always update the current price
                         _users.UpdateAuctionPrice(
                             watch,
-                            result.LowestBin,
+                            lowest.Price,
                             true
                         );
 
 
                         Console.WriteLine(
-                            $"Updated {watch.ClientId}: {watch.ItemTag} {result.LowestBin:N0}"
+                            $"Updated {watch.ClientId}: {watch.ItemTag} {lowest.Price:N0}"
                         );
                     }
                 }

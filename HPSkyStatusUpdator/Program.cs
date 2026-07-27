@@ -136,8 +136,11 @@ async (
         PetXp = watch.PetXp
     };
 
-    var result = await auctions.GetLowestBin(search);
-
+    var result =
+    await auctions.GetAllAuctions();
+    Console.WriteLine(
+    $"Loaded {result.Count} BIN auctions"
+);
     if (result == null)
         return Results.NotFound("Item not found.");
 

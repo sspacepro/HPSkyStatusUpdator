@@ -25,7 +25,7 @@ public class AuctionService
 
 
         // Get first page to find total pages
-        JsonDocument firstPage =
+        JsonDocument? firstPage =
             await GetPage(0);
 
         if (firstPage == null)
