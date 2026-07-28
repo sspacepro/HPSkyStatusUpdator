@@ -14,4 +14,5 @@ public static class SettingKeys
     public const string AuctionCacheRefreshSeconds = "AuctionCacheRefreshSeconds";
     public const string AuctionCheckIntervalSeconds = "AuctionCheckIntervalSeconds";
     public const string WatchExpirationDays = "WatchExpirationDays";
+    public const string WatchCleanupIntervalMinutes = "WatchCleanupIntervalMinutes";
 }

@@ -66,6 +66,33 @@ Console.SetOut(new MultiTextWriter(
     logFile
 ));
 
+app.MapPost("/api/admin/settings/watch-cleanup-interval-minutes/{minutes}",
+(
+    int minutes,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.WatchCleanupIntervalMinutes,
+        minutes
+    );
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/watch-cleanup-interval-minutes",
+(
+    SettingsService settings
+) =>
+{
+    int minutes = settings.GetInt(
+        SettingKeys.WatchCleanupIntervalMinutes,
+        60
+    );
+
+    return Results.Ok(minutes);
+});
+
 app.MapPost("/api/admin/settings/watch-expiration-days/{days}",
 (
     int days,
@@ -459,13 +486,31 @@ app.MapGet("/api/admin/users",
         users.GetAllUsers()
     );
 });
+
+app.MapPost("/api/admin/users/purge-inactive/{days}",
+(
+    int days,
+    UserService users
+) =>
+{
+    int removed = users.PurgeInactiveUsers(days);
+
+    return Results.Ok(new
+    {
+        removed
+    });
+});
+
 app.MapGet("/api/v1/status",
 (
     HttpContext context,
-    HypixelService hypixel
+    HypixelService hypixel,
+    UserService users
 ) =>
 {
+
     var user = (User)context.Items["User"]!;
+    users.UpdateLastSeen(user.ClientId);
     return Results.Ok(new
     {
         username = user.Username,

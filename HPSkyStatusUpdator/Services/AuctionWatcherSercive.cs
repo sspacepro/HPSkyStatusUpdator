@@ -1,4 +1,5 @@
-﻿using HPSkyStatusUpdator.Models;
+﻿using HPSkyStatusUpdator.Configuration;
+using HPSkyStatusUpdator.Models;
 
 namespace HPSkyStatusUpdator.Services;
 
@@ -29,7 +30,12 @@ public class AuctionWatcherService : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var watches = _users.GetAuctionWatches();
-            if (DateTime.UtcNow - lastCleanup > TimeSpan.FromHours(1))
+            int cleanupMinutes = _settings.GetInt(
+                SettingKeys.WatchCleanupIntervalMinutes,
+                     60);
+
+            if (DateTime.UtcNow - lastCleanup >
+                TimeSpan.FromMinutes(cleanupMinutes))
             {
                 _users.DeleteExpired();
 

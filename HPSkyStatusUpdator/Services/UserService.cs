@@ -902,7 +902,51 @@ public class UserService
         return user;
     }
 
+    public int PurgeInactiveUsers(int inactiveDays)
+    {
+        using var connection = _database.GetConnection();
 
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        DELETE FROM Users
+        WHERE LastSeen <= $cutoff;
+        """;
+
+        command.Parameters.AddWithValue(
+            "$cutoff",
+            DateTime.UtcNow.AddDays(-inactiveDays));
+
+        return command.ExecuteNonQuery();
+    }
+    public void UpdateLastSeen(string clientId)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        UPDATE Users
+        SET LastSeen = $now
+        WHERE ClientId = $clientId;
+        """;
+
+        command.Parameters.AddWithValue(
+            "$now",
+            DateTime.UtcNow);
+
+        command.Parameters.AddWithValue(
+            "$clientId",
+            clientId);
+
+        command.ExecuteNonQuery();
+    }
 
 }
 
