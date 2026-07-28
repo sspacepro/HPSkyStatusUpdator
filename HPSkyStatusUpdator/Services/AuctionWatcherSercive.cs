@@ -25,10 +25,18 @@ public class AuctionWatcherService : BackgroundService
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
+        DateTime lastCleanup = DateTime.UtcNow;
         while (!stoppingToken.IsCancellationRequested)
         {
             var watches = _users.GetAuctionWatches();
+            if (DateTime.UtcNow - lastCleanup > TimeSpan.FromHours(1))
+            {
+                _users.DeleteExpired();
 
+                lastCleanup = DateTime.UtcNow;
+
+                Console.WriteLine($"Deleted expired watches.");
+            }
             Console.WriteLine($"Auction watches: {watches.Count}");
 
             foreach (var watch in watches)

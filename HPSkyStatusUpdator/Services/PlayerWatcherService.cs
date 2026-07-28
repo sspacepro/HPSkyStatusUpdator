@@ -22,6 +22,8 @@ public class PlayerWatcherService : BackgroundService
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
+
+
         while (!stoppingToken.IsCancellationRequested)
         {
             var players = _users.GetUniqueWatchedPlayers();

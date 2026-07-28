@@ -13,4 +13,5 @@ public static class SettingKeys
     public const string MaxAuctionWatchesPerClient = "MaxAuctionWatchesPerClient";
     public const string AuctionCacheRefreshSeconds = "AuctionCacheRefreshSeconds";
     public const string AuctionCheckIntervalSeconds = "AuctionCheckIntervalSeconds";
+    public const string WatchExpirationDays = "WatchExpirationDays";
 }

@@ -19,6 +19,7 @@ public class AuctionWatch
     public long LastLowestBin { get; set; }
 
     public bool Available { get; set; }
+    public DateTime ExpiresAt { get; set; }
 
     public string WatchId { get; set; } = Guid.NewGuid().ToString();
 }

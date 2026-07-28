@@ -66,6 +66,33 @@ Console.SetOut(new MultiTextWriter(
     logFile
 ));
 
+app.MapPost("/api/admin/settings/watch-expiration-days/{days}",
+(
+    int days,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.WatchExpirationDays,
+        days
+    );
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/watch-expiration-days",
+(
+    SettingsService settings
+) =>
+{
+    int days = settings.GetInt(
+        SettingKeys.WatchExpirationDays,
+        30
+    );
+
+    return Results.Ok(days);
+});
+
 app.MapGet("/api/admin/settings/auction-cache-refresh",
 (
     SettingsService settings

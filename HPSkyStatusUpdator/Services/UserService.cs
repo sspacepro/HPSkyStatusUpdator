@@ -247,6 +247,11 @@ public class UserService
         if (uuid == null)
             throw new Exception("Player does not exist.");
 
+        DateTime expiresAt = DateTime.UtcNow.AddDays(
+        _settings.GetInt(
+            SettingKeys.WatchExpirationDays,
+            30));
+
         using var connection = _database.GetConnection();
 
         connection.Open();
@@ -271,19 +276,19 @@ public class UserService
 
         insertCommand.CommandText =
         """
-    INSERT OR IGNORE INTO WatchList
-    (
-        ClientId,
-        Username,
-        Uuid
-    )
-    VALUES
-    (
-        $clientId,
-        $username,
-        $uuid
-    )
-    """;
+        INSERT OR IGNORE INTO WatchList
+        (
+            ClientId,
+            Username,
+            Uuid
+        )
+        VALUES
+        (
+            $clientId,
+            $username,
+            $uuid
+        )
+        """;
 
         insertCommand.Parameters.AddWithValue("$clientId", clientId);
         insertCommand.Parameters.AddWithValue("$username", username);
@@ -378,12 +383,41 @@ public class UserService
         return command.ExecuteNonQuery() > 0;
     }
 
+
+    public void DeleteExpired()
+    {
+        using var connection = _database.GetConnection();
+        connection.Open();
+
+        var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+        DELETE FROM AuctionWatchList
+        WHERE ExpiresAt <= $now;
+
+        DELETE FROM WatchList
+        WHERE ExpiresAt <= $now;
+        """;
+
+        command.Parameters.AddWithValue(
+            "$now",
+            DateTime.UtcNow);
+
+        command.ExecuteNonQuery();
+    }
+
     public AuctionWatchAddResult AddAuctionWatch(AuctionWatch watch)
     {
         using var connection = _database.GetConnection();
 
         connection.Open();
         var existsCommand = connection.CreateCommand();
+
+        DateTime expiresAt = DateTime.UtcNow.AddDays(
+    _settings.GetInt(
+        SettingKeys.WatchExpirationDays,
+        30));
 
         existsCommand.CommandText =
         """
@@ -485,7 +519,8 @@ public class UserService
         Recombobulated,
         PetXp,
         NotifyBelow,
-        LastLowestBin
+        LastLowestBin,
+        ExpiresAt
     )
     VALUES
     (
@@ -497,7 +532,8 @@ public class UserService
         $recomb,
         $petXp,
         $notifyBelow,
-        0
+        0,
+        $expiresAt
     );
     """;
         command.Parameters.AddWithValue(
@@ -539,6 +575,11 @@ public class UserService
         command.Parameters.AddWithValue(
             "$notifyBelow",
             watch.NotifyBelow
+        );
+
+        command.Parameters.AddWithValue(
+            "$expiresAt",
+            expiresAt
         );
 
         try
@@ -860,4 +901,8 @@ public class UserService
 
         return user;
     }
+
+
+
 }
+
