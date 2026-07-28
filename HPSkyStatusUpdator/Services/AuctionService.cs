@@ -8,35 +8,38 @@ namespace HPSkyStatusUpdator.Services;
 public class AuctionService
 {
     private readonly HttpClient _client;
+    private volatile List<DecodedAuction> _cache = new();
+
+    private volatile Dictionary<string, List<DecodedAuction>> _auctionIndex =
+    new(StringComparer.OrdinalIgnoreCase);
+
 
     private const string AuctionUrl =
         "https://api.hypixel.net/v2/skyblock/auctions";
-    private List<DecodedAuction> _cache = new();
 
     private DateTime _cacheTime = DateTime.MinValue;
 
+
     private readonly TimeSpan _cacheDuration =
         TimeSpan.FromMinutes(1);
-
     public AuctionService(HttpClient client)
     {
         _client = client;
     }
 
-    private Dictionary<string, List<DecodedAuction>> _auctionIndex = new();
-
-    public List<DecodedAuction> GetAllAuctions()
+    public IReadOnlyList<DecodedAuction> GetAllAuctions()
     {
         return _cache;
     }
 
-    public List<DecodedAuction> GetAuctions(string itemId)
+    public IReadOnlyList<DecodedAuction> GetAuctions(string itemId)
     {
         if (_auctionIndex.TryGetValue(itemId, out var auctions))
             return auctions;
 
-        return new List<DecodedAuction>();
+        return Array.Empty<DecodedAuction>();
     }
+
     private async Task<List<DecodedAuction>> DownloadAuctions()
     {
         var decodedAuctions = new List<DecodedAuction>();
@@ -137,9 +140,11 @@ public class AuctionService
 
     public async Task RefreshCache()
     {
-        _cache = await DownloadAuctions();
+        Console.WriteLine("Refreshing auction cache...");
 
-        _auctionIndex = _cache
+        var newCache = await DownloadAuctions();
+
+        var newIndex = newCache
             .GroupBy(a => a.ItemId)
             .ToDictionary(
                 g => g.Key,
@@ -147,14 +152,18 @@ public class AuctionService
                 StringComparer.OrdinalIgnoreCase
             );
 
+        // Swap everything at once
+        _cache = newCache;
+        _auctionIndex = newIndex;
+
+
+
+
         _cacheTime = DateTime.UtcNow;
+
 
         Console.WriteLine(
             $"Auction cache updated: {_cache.Count} auctions"
-        );
-
-        Console.WriteLine(
-            $"Auction index contains {_auctionIndex.Count} items"
         );
     }
 
@@ -366,5 +375,26 @@ public class AuctionService
     }
 
 
+    public IReadOnlyList<DecodedAuction> SearchAuctions(AuctionSearch search)
+    {
+        if (!_auctionIndex.TryGetValue(search.ItemTag, out var auctions))
+            return Array.Empty<DecodedAuction>();
 
+        return auctions
+            .Where(a =>
+                search.Tier == null ||
+                a.Tier.Equals(
+                    search.Tier,
+                    StringComparison.OrdinalIgnoreCase))
+
+            .Where(a =>
+                search.Stars == null ||
+                a.Stars == search.Stars)
+
+            .Where(a =>
+                search.Recombobulated == null ||
+                a.Recombobulated == search.Recombobulated)
+
+            .ToList();
+    }
 }

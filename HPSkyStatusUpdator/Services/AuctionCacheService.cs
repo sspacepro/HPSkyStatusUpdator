@@ -1,4 +1,7 @@
-﻿namespace HPSkyStatusUpdator.Services;
+﻿using HPSkyStatusUpdator.Configuration;
+using System.Runtime;
+
+namespace HPSkyStatusUpdator.Services;
 
 public class AuctionCacheService : BackgroundService
 {
@@ -28,9 +31,26 @@ public class AuctionCacheService : BackgroundService
             }
 
 
+            int seconds = _settings.GetInt(
+                SettingKeys.AuctionCacheRefreshSeconds,
+                60
+            );
+
             await Task.Delay(
-                TimeSpan.FromMinutes(1),
+                TimeSpan.FromSeconds(seconds),
                 stoppingToken);
         }
+
+
+    }
+
+    private readonly SettingsService _settings;
+
+    public AuctionCacheService(
+        AuctionService auctions,
+        SettingsService settings)
+    {
+        _auctions = auctions;
+        _settings = settings;
     }
 }

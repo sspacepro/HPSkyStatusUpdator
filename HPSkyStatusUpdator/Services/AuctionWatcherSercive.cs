@@ -49,23 +49,14 @@ public class AuctionWatcherService : BackgroundService
                 })
                 .Distinct()
                 .ToList();
-            var result = _auctions.GetAllAuctions();
-
             foreach (var search in searches)
             {
                 try
                 {
+                    var auctions = _auctions.SearchAuctions(search);
 
-
-
-
-                    var lowest = result
-                        .Where(a =>
-                            a.ItemId.Equals(
-                                search.ItemTag,
-                                StringComparison.OrdinalIgnoreCase))
-
-                        .Where(a =>
+                    var lowest = auctions
+                                            .Where(a =>
                             search.Tier == null ||
                             a.Tier.Equals(
                                 search.Tier,
@@ -83,7 +74,6 @@ public class AuctionWatcherService : BackgroundService
                             search.PetXp == null ||
                             (a.PetXp != null && a.PetXp >= search.PetXp))
 
-                        
                         .OrderBy(a => a.Price)
                         .FirstOrDefault();
 
@@ -171,14 +161,14 @@ public class AuctionWatcherService : BackgroundService
 
             int seconds = _settings.GetInt(
                 "AuctionCheckIntervalSeconds",
-                60
+                120
             );
+
 
 
             await Task.Delay(
                 TimeSpan.FromSeconds(seconds),
-                stoppingToken
-            );
+                stoppingToken);
         }
     }
 }

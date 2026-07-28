@@ -42,6 +42,7 @@ builder.Services.AddHostedService<AuctionWatcherService>();
 
 builder.Services.AddSingleton<NotificationService>();
 
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -64,6 +65,73 @@ Console.SetOut(new MultiTextWriter(
     Console.Out,
     logFile
 ));
+
+app.MapGet("/api/admin/settings/auction-cache-refresh",
+(
+    SettingsService settings
+) =>
+{
+    int seconds = settings.GetInt(
+        SettingKeys.AuctionCacheRefreshSeconds,
+        60
+    );
+
+    return Results.Ok(new
+    {
+        AuctionCacheRefreshSeconds = seconds
+    });
+});
+
+
+app.MapGet("/api/admin/settings/auction-check-interval",
+(
+    SettingsService settings
+) =>
+{
+    int seconds = settings.GetInt(
+        SettingKeys.AuctionCheckIntervalSeconds,
+        10
+    );
+
+    return Results.Ok(new
+    {
+        AuctionCheckIntervalSeconds = seconds
+    });
+});
+
+app.MapPost("/api/admin/settings/auction-check-interval/{seconds}",
+(
+    int seconds,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.AuctionCheckIntervalSeconds,
+        seconds
+    );
+
+    return Results.Ok(new
+    {
+        AuctionCheckIntervalSeconds = seconds
+    });
+});
+
+app.MapPost("/api/admin/settings/auction-cache-refresh/{seconds}",
+(
+    int seconds,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.AuctionCacheRefreshSeconds,
+        seconds
+    );
+
+    return Results.Ok(new
+    {
+        AuctionCacheRefreshSeconds = seconds
+    });
+});
 
 
 app.MapGet("/api/v1/client/settings",
@@ -89,6 +157,7 @@ app.MapGet("/api/v1/client/settings",
             )
     });
 });
+
 
 app.MapPost("/api/admin/settings/max-auction-watches/{amount}",
 (
@@ -117,33 +186,6 @@ app.MapGet("/api/admin/settings/max-auction-watches",
         )
     );
 });
-
-app.MapGet("/api/admin/auction/{itemTag}",
-async (
-    string itemTag,
-    AuctionService auctions
-) =>
-{
-    var result = auctions.GetAllAuctions();
-
-    var matches = result
-        .Where(a =>
-            a.ItemId.Equals(
-                itemTag,
-                StringComparison.OrdinalIgnoreCase))
-        .OrderBy(a => a.Price)
-        .ToList();
-
-
-    Console.WriteLine(
-        $"Found {matches.Count} {itemTag} auctions"
-    );
-
-
-    return Results.Ok(matches);
-});
-
-
 
 app.MapDelete("/api/v1/auction/watch/{watchId}",
 (

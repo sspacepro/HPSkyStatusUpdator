@@ -12,9 +12,9 @@ public class DecodedAuction
 
     public long Price { get; set; }
 
-    public int Stars { get; set; }
+    public int? Stars { get; set; }
 
-    public bool Recombobulated { get; set; }
+    public bool? Recombobulated { get; set; }
 
     public long? PetXp { get; set; }
 }

@@ -3,12 +3,17 @@ namespace HPSkyStatusUpdator.Services;
 
 public class SettingsService
 {
+
+
+
     private readonly DatabaseService _database;
 
     public SettingsService(DatabaseService database)
     {
         _database = database;
     }
+
+
 
     public string? Get(string key)
     {
