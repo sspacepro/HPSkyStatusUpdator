@@ -14,6 +14,8 @@ builder.Services.AddSingleton<HypixelService>();
 
 builder.Services.AddHostedService<HypixelUpdater>();
 
+builder.Services.AddHostedService<AuctionCacheService>();
+
 builder.Services.AddSingleton<RegistrationService>();
 
 builder.Services.AddSingleton<RateLimitService>();
@@ -122,29 +124,23 @@ async (
     AuctionService auctions
 ) =>
 {
-    var watch = new AuctionWatch
-    {
-        ItemTag = itemTag
-    };
+    var result = auctions.GetAllAuctions();
 
-    var search = new AuctionSearch
-    {
-        ItemTag = watch.ItemTag,
-        Tier = watch.Tier,
-        Stars = watch.Stars,
-        Recombobulated = watch.Recombobulated,
-        PetXp = watch.PetXp
-    };
+    var matches = result
+        .Where(a =>
+            a.ItemId.Equals(
+                itemTag,
+                StringComparison.OrdinalIgnoreCase))
+        .OrderBy(a => a.Price)
+        .ToList();
 
-    var result =
-    await auctions.GetAllAuctions();
+
     Console.WriteLine(
-    $"Loaded {result.Count} BIN auctions"
-);
-    if (result == null)
-        return Results.NotFound("Item not found.");
+        $"Found {matches.Count} {itemTag} auctions"
+    );
 
-    return Results.Ok(result);
+
+    return Results.Ok(matches);
 });
 
 

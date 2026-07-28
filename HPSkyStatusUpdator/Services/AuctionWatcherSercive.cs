@@ -49,7 +49,7 @@ public class AuctionWatcherService : BackgroundService
                 })
                 .Distinct()
                 .ToList();
-            var result = await _auctions.GetAllAuctions();
+            var result = _auctions.GetAllAuctions();
 
             foreach (var search in searches)
             {
@@ -64,11 +64,26 @@ public class AuctionWatcherService : BackgroundService
                             a.ItemId.Equals(
                                 search.ItemTag,
                                 StringComparison.OrdinalIgnoreCase))
+
                         .Where(a =>
                             search.Tier == null ||
                             a.Tier.Equals(
                                 search.Tier,
                                 StringComparison.OrdinalIgnoreCase))
+
+                        .Where(a =>
+                            search.Stars == null ||
+                            a.Stars == search.Stars)
+
+                        .Where(a =>
+                            search.Recombobulated == null ||
+                            a.Recombobulated == search.Recombobulated)
+
+                        .Where(a =>
+                            search.PetXp == null ||
+                            (a.PetXp != null && a.PetXp >= search.PetXp))
+
+                        
                         .OrderBy(a => a.Price)
                         .FirstOrDefault();
 

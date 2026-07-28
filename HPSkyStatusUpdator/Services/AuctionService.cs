@@ -11,15 +11,33 @@ public class AuctionService
 
     private const string AuctionUrl =
         "https://api.hypixel.net/v2/skyblock/auctions";
+    private List<DecodedAuction> _cache = new();
 
+    private DateTime _cacheTime = DateTime.MinValue;
+
+    private readonly TimeSpan _cacheDuration =
+        TimeSpan.FromMinutes(1);
 
     public AuctionService(HttpClient client)
     {
         _client = client;
     }
 
+    private Dictionary<string, List<DecodedAuction>> _auctionIndex = new();
 
-    public async Task<List<DecodedAuction>> GetAllAuctions()
+    public List<DecodedAuction> GetAllAuctions()
+    {
+        return _cache;
+    }
+
+    public List<DecodedAuction> GetAuctions(string itemId)
+    {
+        if (_auctionIndex.TryGetValue(itemId, out var auctions))
+            return auctions;
+
+        return new List<DecodedAuction>();
+    }
+    private async Task<List<DecodedAuction>> DownloadAuctions()
     {
         var decodedAuctions = new List<DecodedAuction>();
 
@@ -50,95 +68,37 @@ public class AuctionService
             $"Downloading {totalPages} auction pages"
         );
 
-        for (int page = 0; page <= totalPages; page++)
-        {
-            JsonDocument? document;
+        var semaphore = new SemaphoreSlim(10);
 
-
-            if (page == 0)
+        var pageTasks = Enumerable.Range(1, totalPages)
+            .Select(async page =>
             {
-                document = firstPage;
-            }
-            else
-            {
-                document = await GetPage(page);
-            }
+                await semaphore.WaitAsync();
 
-
-            if (document == null)
-                continue;
-
-
-            if (!document.RootElement.TryGetProperty(
-                    "auctions",
-                    out var auctions))
-            {
-                continue;
-            }
-
-
-            foreach (var auction in auctions.EnumerateArray())
-            {
-
-                // Ignore anything without BIN
-                if (!auction.TryGetProperty(
-                        "bin",
-                        out var bin))
+                try
                 {
-                    continue;
+                    return await GetPage(page);
                 }
-
-
-                if (!bin.GetBoolean())
-                    continue;
-
-
-
-
-
-
-                long price =
-                    auction.GetProperty(
-                        "starting_bid")
-                    .GetInt64();
-
-
-                string? id = GetNbtId(auction);
-
-                if (id == null)
-                    continue;
-
-
-                decodedAuctions.Add(new DecodedAuction
+                finally
                 {
-                    ItemId = id,
-
-                    Uuid =
-                        auction.GetProperty("uuid")
-                        .GetString() ?? "",
-
-                    ItemName =
-                        auction.GetProperty("item_name")
-                        .GetString() ?? "",
-
-                    Tier =
-                        auction.GetProperty("tier")
-                        .GetString() ?? "",
-
-                    Price = price
-                });
-
-            }
+                    semaphore.Release();
+                }
+            })
+            .ToArray();
 
 
-            if (page % 5 == 0)
+        JsonDocument?[] otherPages =
+            await Task.WhenAll(pageTasks);
+
+        ProcessPage(firstPage, decodedAuctions);
+
+        foreach (var page in otherPages)
+        {
+            if (page != null)
             {
-                Console.WriteLine(
-                    $"Checked page {page}/{totalPages}"
-                );
+                ProcessPage(page, decodedAuctions);
             }
         }
-
 
         return decodedAuctions;
     }
@@ -175,19 +135,37 @@ public class AuctionService
         }
     }
 
+    public async Task RefreshCache()
+    {
+        _cache = await DownloadAuctions();
+
+        _auctionIndex = _cache
+            .GroupBy(a => a.ItemId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.ToList(),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+        _cacheTime = DateTime.UtcNow;
+
+        Console.WriteLine(
+            $"Auction cache updated: {_cache.Count} auctions"
+        );
+
+        Console.WriteLine(
+            $"Auction index contains {_auctionIndex.Count} items"
+        );
+    }
 
 
-    
 
 
 
-    private string? GetNbtId(JsonElement auction)
+    private NbtCompound? GetExtraAttributes(JsonElement auction)
     {
         if (!auction.TryGetProperty("item_bytes", out var bytes))
-        {
-
             return null;
-        }
 
         string itemBytes = bytes.GetString()!;
 
@@ -197,15 +175,9 @@ public class AuctionService
         using var gzip = new GZipStream(compressedStream, CompressionMode.Decompress);
 
         NbtFile file = new();
-
-        file.LoadFromStream(
-            gzip,
-            NbtCompression.None);
-
-
+        file.LoadFromStream(gzip, NbtCompression.None);
 
         var root = file.RootTag;
-
 
         NbtCompound? item = null;
 
@@ -218,84 +190,30 @@ public class AuctionService
             }
         }
 
-
         if (item == null)
-        {
-
             return null;
-        }
-
 
         var tag = FindCompound(item, "tag");
-
         if (tag == null)
-        {
-
-            return null;
-        }
-        if (tag == null)
-        {
-
-            return null;
-        }
-
-
-        var extra = FindCompound(tag, "ExtraAttributes");
-        if (extra == null)
-        {
-
-            return null;
-        }
-
-
-
-
-        if (extra == null)
             return null;
 
+        return FindCompound(tag, "ExtraAttributes");
+    }
 
-        // Check for pets
+    private string? GetItemId(NbtCompound extra)
+    {
         var petInfo = FindString(extra, "petInfo");
 
         if (petInfo != null)
         {
             using JsonDocument petDoc = JsonDocument.Parse(petInfo);
 
-            if (petDoc.RootElement.TryGetProperty(
-                    "type",
-                    out var type))
-            {
+            if (petDoc.RootElement.TryGetProperty("type", out var type))
                 return type.GetString() + "_PET";
-            }
         }
 
-
-        // Normal items
-        string? id = FindString(extra, "id");
-      
-        if (id == "PET")
-        {
-            string? petInfo2 = FindString(extra, "petInfo");
-
-            if (petInfo2 != null)
-            {
-                using JsonDocument pet =
-                    JsonDocument.Parse(petInfo2);
-
-                if (pet.RootElement.TryGetProperty(
-                        "type",
-                        out var type))
-                {
-                    return type.GetString() + "_PET";
-                }
-            }
-        }
-        
-       
-        return id;
+        return FindString(extra, "id");
     }
-
-
 
     private NbtCompound? FindCompound(
         NbtCompound parent,
@@ -331,7 +249,122 @@ public class AuctionService
         return null;
     }
 
-     
-}
+    private int GetInt(
+    NbtCompound parent,
+    string name,
+    int defaultValue = 0)
+    {
+        foreach (NbtTag tag in parent.Tags)
+        {
+            if (tag.Name != name)
+                continue;
 
-// add searches for everything
+            if (tag is NbtInt i)
+                return i.Value;
+
+            if (tag is NbtShort s)
+                return s.Value;
+
+            if (tag is NbtByte b)
+                return b.Value;
+        }
+
+        return defaultValue;
+    }
+
+    private long? GetPetXp(NbtCompound extra)
+    {
+        string? petInfo = FindString(extra, "petInfo");
+
+        if (petInfo == null)
+            return null;
+
+        using JsonDocument pet =
+            JsonDocument.Parse(petInfo);
+
+        if (!pet.RootElement.TryGetProperty(
+                "exp",
+                out var xp))
+        {
+            return null;
+        }
+
+        return (long)xp.GetDouble();
+    }
+
+    private void ProcessPage(
+    JsonDocument document,
+    List<DecodedAuction> decodedAuctions)
+    {
+        if (!document.RootElement.TryGetProperty(
+                "auctions",
+                out var auctions))
+        {
+            return;
+        }
+
+        foreach (var auction in auctions.EnumerateArray())
+        {
+            // Ignore anything without BIN
+            if (!auction.TryGetProperty(
+                    "bin",
+                    out var bin))
+            {
+                continue;
+            }
+
+
+            if (!bin.GetBoolean())
+                continue;
+
+
+
+
+
+
+            long price =
+                auction.GetProperty(
+                    "starting_bid")
+                .GetInt64();
+
+
+            var extra = GetExtraAttributes(auction);
+
+            if (extra == null)
+                continue;
+
+            string? itemId = GetItemId(extra);
+
+            if (itemId == null)
+                continue;
+
+
+            var decoded = new DecodedAuction
+            {
+                Uuid = auction.GetProperty("uuid").GetString() ?? "",
+
+                ItemId = itemId,
+
+                ItemName = auction.GetProperty("item_name").GetString() ?? "",
+
+                Tier = auction.GetProperty("tier").GetString() ?? "",
+
+                Price = price,
+
+                Stars = GetInt(extra, "upgrade_level"),
+
+                Recombobulated = GetInt(extra, "rarity_upgrades") > 0,
+
+                PetXp = GetPetXp(extra)
+            };
+
+
+            decodedAuctions.Add(decoded);
+
+        }
+    
+    }
+
+
+
+}
