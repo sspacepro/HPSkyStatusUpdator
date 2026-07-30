@@ -430,7 +430,7 @@ async (
             hypixelPlayers))
         {
             return Results.BadRequest(
-    "Player is already being watched or your watch list is full."
+    "Player is already being watched."
 );
         }
 

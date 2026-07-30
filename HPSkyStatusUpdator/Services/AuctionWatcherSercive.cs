@@ -78,11 +78,18 @@ public class AuctionWatcherService : BackgroundService
 
                         .Where(a =>
                             search.Stars == null ||
-                            a.Stars == search.Stars)
+                            a.Stars >= search.Stars)
 
                         .Where(a =>
-                            search.Recombobulated == null ||
-                            a.Recombobulated == search.Recombobulated)
+                        {
+                            if (search.Recombobulated == null)
+                                return true;
+
+                            if (search.Recombobulated == false)
+                                return true; // allow both
+
+                            return a.Recombobulated == true; // only recombed
+                        })
 
                         .Where(a =>
                             search.PetXp == null ||
@@ -122,6 +129,8 @@ public class AuctionWatcherService : BackgroundService
                             _users.UpdateAuctionPrice(
                                 watch,
                                 0,
+                                lowest.DisplayItemName,
+                                lowest.ItemLore,
                                 false
                             );
 
@@ -155,6 +164,8 @@ public class AuctionWatcherService : BackgroundService
                         _users.UpdateAuctionPrice(
                             watch,
                             lowest.Price,
+                            lowest.DisplayItemName,
+                            lowest.ItemLore,
                             true
                         );
 

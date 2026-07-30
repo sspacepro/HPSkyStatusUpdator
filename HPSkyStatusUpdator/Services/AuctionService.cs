@@ -364,7 +364,10 @@ public class AuctionService
 
                 Recombobulated = GetInt(extra, "rarity_upgrades") > 0,
 
-                PetXp = GetPetXp(extra)
+                PetXp = GetPetXp(extra),
+
+                ItemLore = auction.GetProperty("item_lore").GetString() ?? "",
+                DisplayItemName = auction.GetProperty("item_name").GetString() ?? ""
             };
 
 

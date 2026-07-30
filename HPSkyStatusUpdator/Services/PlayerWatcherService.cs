@@ -74,7 +74,7 @@ public class PlayerWatcherService : BackgroundService
                     _users.UpdatePlayerStatus(
                         player.Username,
                         status.SkyBlockOnline,
-                        status.Mode
+                        status.DisplayMode
                     );
 
                     Console.WriteLine(

@@ -207,7 +207,7 @@ public class DatabaseService
             RENAME TO AuctionWatchList;
             """;
 
-            command.ExecuteNonQuery();
+            command2.ExecuteNonQuery();
 
             AddMigration(connection, 3);
         }

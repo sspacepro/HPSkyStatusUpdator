@@ -59,6 +59,7 @@ public class UserService
     }
     private readonly DatabaseService _database;
     private readonly SettingsService _settings;
+    private readonly HypixelPlayerService _hypixelPlayers;
     public List<string> GetWatchedPlayers()
     {
         using var connection = _database.GetConnection();
@@ -134,7 +135,7 @@ public class UserService
         command.ExecuteNonQuery();
     }
 
-    public object GetPlayerStatuses(string clientId)
+    public List<PlayerStatus> GetPlayerStatuses(string clientId)
     {
         using var connection = _database.GetConnection();
 
@@ -161,11 +162,11 @@ public class UserService
 
         using var reader = command.ExecuteReader();
 
-        List<object> results = new();
+        List<PlayerStatus> results = new();
 
         while (reader.Read())
         {
-            results.Add(new
+            results.Add(new PlayerStatus
             {
                 Username = reader.GetString(0),
                 SkyBlockOnline = !reader.IsDBNull(1) &&
@@ -178,10 +179,11 @@ public class UserService
 
         return results;
     }
-    public UserService(DatabaseService database, SettingsService settings)
+    public UserService(DatabaseService database, SettingsService settings, HypixelPlayerService hypixelPlayers)
     {
         _database = database;
         _settings = settings;
+        _hypixelPlayers = hypixelPlayers;
     }
 
     public List<User> GetAllUsers()
@@ -246,6 +248,13 @@ public class UserService
 
         if (uuid == null)
             throw new Exception("Player does not exist.");
+
+        if (await _hypixelPlayers.IsYouTuber(uuid))
+        {
+            throw new Exception(
+                "You cannot watch YouTube ranked players."
+            );
+        }
 
         DateTime expiresAt = DateTime.UtcNow.AddDays(
         _settings.GetInt(
@@ -520,6 +529,10 @@ public class UserService
         PetXp,
         NotifyBelow,
         LastLowestBin,
+        LastDisplayItemName,
+        LastItemLore,
+        LastDisplayItemName,
+        LastItemLore,
         ExpiresAt
     )
     VALUES
@@ -533,6 +546,8 @@ public class UserService
         $petXp,
         $notifyBelow,
         0,
+        '',
+        '',
         $expiresAt
     );
     """;
@@ -615,6 +630,8 @@ public class UserService
         Stars,
         Recombobulated,
         PetXp,
+        LastDisplayItemName,
+        LastItemLore,
         NotifyBelow,
         LastLowestBin,
         Available
@@ -646,12 +663,19 @@ public class UserService
                 PetXp = reader.IsDBNull(6)
                     ? null
                     : reader.GetInt32(6),
+                DisplayItemName = reader.IsDBNull(7)
+                     ? ""
+                    : reader.GetString(7),
 
-                NotifyBelow = reader.GetInt64(7),
+                ItemLore = reader.IsDBNull(8)
+                     ? ""
+                    : reader.GetString(8),
 
-                LastLowestBin = reader.GetInt64(8),
+                NotifyBelow = reader.GetInt64(9),
 
-                Available = reader.GetInt32(9) == 1
+                LastLowestBin = reader.GetInt64(10),
+
+                Available = reader.GetInt32(11) == 1
             });
         }
 
@@ -661,6 +685,8 @@ public class UserService
     public void UpdateAuctionPrice(
         AuctionWatch watch,
         long price,
+        string displayItemName,
+        string itemLore,
         bool available)
     {
         using var connection = _database.GetConnection();
@@ -672,17 +698,20 @@ public class UserService
         command.CommandText =
         """
         UPDATE AuctionWatchList
-        SET LastLowestBin = $price,
-            Available = $available
+        SET 
+            LastLowestBin = $price,
+            Available = $available,
+            LastDisplayItemName = $displayItemName,
+            LastItemLore = $itemLore
         WHERE WatchId = $watchId;
         """;
          
         command.Parameters.AddWithValue("$price", price);
         command.Parameters.AddWithValue("$available", available ? 1 : 0);
-        command.Parameters.AddWithValue(
-            "$watchId",
-            watch.WatchId
-        );
+        command.Parameters.AddWithValue("$displayItemName", displayItemName);
+        command.Parameters.AddWithValue("$itemLore", itemLore);
+        command.Parameters.AddWithValue("$watchId", watch.WatchId);
+
 
         command.ExecuteNonQuery();
     }
@@ -829,6 +858,8 @@ public class UserService
                 Stars = x.Stars,
                 Recombobulated = x.Recombobulated,
                 PetXp = x.PetXp,
+                DisplayItemName = x.DisplayItemName,
+                ItemLore = x.ItemLore,
                 NotifyBelow = x.NotifyBelow,
                 LastLowestBin = x.LastLowestBin,
                 Available = x.Available

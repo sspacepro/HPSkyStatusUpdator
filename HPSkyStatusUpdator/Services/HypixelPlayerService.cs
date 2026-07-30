@@ -57,7 +57,7 @@ public class HypixelPlayerService
                 ? game.GetString() ?? ""
                 : "",
             Mode = session.TryGetProperty("mode", out var mode)
-                ? mode.GetString() ?? ""
+                ? (mode.GetString() ?? "").Trim()
                 : ""
         };
     }
@@ -86,5 +86,46 @@ public class HypixelPlayerService
             .GetString();
     }
 
+    public async Task<bool> IsYouTuber(string uuid)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"https://api.hypixel.net/v2/player?uuid={uuid}"
+        );
 
+        request.Headers.Add(
+            "API-Key",
+            _settings.GetString("HypixelApiKey")
+        );
+
+        using var response = await _client.SendAsync(request);
+
+        string json = await response.Content.ReadAsStringAsync();
+
+        using JsonDocument doc = JsonDocument.Parse(json);
+
+        if (!doc.RootElement.TryGetProperty(
+            "player",
+            out var player)
+            || player.ValueKind == JsonValueKind.Null)
+        {
+            Console.WriteLine("Player data missing");
+            return false;
+        }
+
+
+        if (player.TryGetProperty(
+            "rank",
+            out var rank))
+        {
+            return rank.GetString()
+                ?.Equals(
+                    "YOUTUBER",
+                    StringComparison.OrdinalIgnoreCase)
+                == true;
+        }
+
+
+        return false;
+    }
 }

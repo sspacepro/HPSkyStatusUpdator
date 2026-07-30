@@ -14,6 +14,10 @@ public class AuctionWatch
 
     public long? PetXp { get; set; }
 
+    public string DisplayItemName { get; set; } = "";
+
+    public string ItemLore { get; set; } = "";
+
     public long NotifyBelow { get; set; }
 
     public long LastLowestBin { get; set; }

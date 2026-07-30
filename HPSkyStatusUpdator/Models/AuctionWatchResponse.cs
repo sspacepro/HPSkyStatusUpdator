@@ -19,4 +19,8 @@ public class AuctionWatchResponse
     public long LastLowestBin { get; set; }
 
     public bool Available { get; set; }
+
+    public string DisplayItemName { get; set; } = "";
+
+    public string ItemLore { get; set; } = "";
 }

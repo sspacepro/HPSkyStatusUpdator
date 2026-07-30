@@ -17,4 +17,8 @@ public class DecodedAuction
     public bool? Recombobulated { get; set; }
 
     public long? PetXp { get; set; }
+
+    public string DisplayItemName { get; set; } = "";
+
+    public string ItemLore { get; set; } = "";
 }
