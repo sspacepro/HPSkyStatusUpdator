@@ -46,13 +46,6 @@ public class PlayerWatcherService : BackgroundService
                                 ? "Entered SkyBlock"
                                 : "Left SkyBlock";
                         }
-                        else if (
-                            status.SkyBlockOnline &&
-                            oldStatus.Mode != status.Mode
-                        )
-                        {
-                            message = $"Changed to {status.DisplayMode}";
-                        }
 
                         if (message != null)
                         {

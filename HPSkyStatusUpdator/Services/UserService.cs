@@ -520,35 +520,35 @@ public class UserService
         """
     INSERT INTO AuctionWatchList
     (
-        WatchId,
-        ClientId,
-        ItemTag,
-        Tier,
-        Stars,
-        Recombobulated,
-        PetXp,
-        NotifyBelow,
-        LastLowestBin,
-        LastDisplayItemName,
-        LastItemLore,
-        LastDisplayItemName,
-        LastItemLore,
-        ExpiresAt
+    WatchId,
+    ClientId,
+    ItemTag,
+    Tier,
+    Stars,
+    Recombobulated,
+    PetXp,
+    NotifyBelow,
+    LastLowestBin,
+    LastDisplayItemName,
+    LastItemLore,
+    Available,
+    ExpiresAt
     )
     VALUES
     (
-        $watchId,
-        $clientId,
-        $itemTag,
-        $tier,
-        $stars,
-        $recomb,
-        $petXp,
-        $notifyBelow,
-        0,
-        '',
-        '',
-        $expiresAt
+    $watchId,
+    $clientId,
+    $itemTag,
+    $tier,
+    $stars,
+    $recomb,
+    $petXp,
+    $notifyBelow,
+    0,
+    '',
+    '',
+    0,
+    $expiresAt
     );
     """;
         command.Parameters.AddWithValue(

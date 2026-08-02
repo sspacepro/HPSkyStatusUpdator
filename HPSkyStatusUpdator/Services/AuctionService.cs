@@ -386,17 +386,27 @@ public class AuctionService
         return auctions
             .Where(a =>
                 search.Tier == null ||
-                a.Tier.Equals(
-                    search.Tier,
-                    StringComparison.OrdinalIgnoreCase))
+                string.Equals(a.Tier, search.Tier, StringComparison.OrdinalIgnoreCase))
 
             .Where(a =>
                 search.Stars == null ||
-                a.Stars == search.Stars)
+                (a.Stars != null && a.Stars >= search.Stars))
 
             .Where(a =>
-                search.Recombobulated == null ||
-                a.Recombobulated == search.Recombobulated)
+            {
+                if (search.Recombobulated == null)
+                    return true;
+
+                if (search.Recombobulated == false)
+                    return true; // allow both recombed and non-recombed
+
+                return a.Recombobulated == true;
+            })
+
+            .Where(a =>
+                search.PetXp == null ||
+                a.PetXp == null ||
+                a.PetXp >= search.PetXp)
 
             .ToList();
     }

@@ -43,12 +43,11 @@ public class AuctionWatcherService : BackgroundService
 
                 Console.WriteLine($"Deleted expired watches.");
             }
-            Console.WriteLine($"Auction watches: {watches.Count}");
 
             foreach (var watch in watches)
             {
                 Console.WriteLine(
-                    $"Watching {watch.ItemTag} Tier:{watch.Tier} Stars:{watch.Stars}"
+                    $"Auction: {watch.ItemTag} | Tier:{watch.Tier} | Stars:{watch.Stars} | Recomb:{watch.Recombobulated} | XP:{watch.PetXp}"
                 );
             }
 
@@ -67,18 +66,24 @@ public class AuctionWatcherService : BackgroundService
             {
                 try
                 {
-                    var auctions = _auctions.SearchAuctions(search);
+                    var auctions = _auctions.SearchAuctions(search)
+                          ?? new List<DecodedAuction>();
+                    
+
+
 
                     var lowest = auctions
-                                            .Where(a =>
+                         .Where(a =>
                             search.Tier == null ||
-                            a.Tier.Equals(
+                             string.Equals(
+                                a.Tier,
                                 search.Tier,
                                 StringComparison.OrdinalIgnoreCase))
 
+
                         .Where(a =>
                             search.Stars == null ||
-                            a.Stars >= search.Stars)
+                            (a.Stars != null && a.Stars >= search.Stars))
 
                         .Where(a =>
                         {
@@ -93,7 +98,8 @@ public class AuctionWatcherService : BackgroundService
 
                         .Where(a =>
                             search.PetXp == null ||
-                            (a.PetXp != null && a.PetXp >= search.PetXp))
+                            a.PetXp == null ||
+                            a.PetXp >= search.PetXp)
 
                         .OrderBy(a => a.Price)
                         .FirstOrDefault();
@@ -129,8 +135,8 @@ public class AuctionWatcherService : BackgroundService
                             _users.UpdateAuctionPrice(
                                 watch,
                                 0,
-                                lowest.DisplayItemName,
-                                lowest.ItemLore,
+                                "",
+                                "",
                                 false
                             );
 
