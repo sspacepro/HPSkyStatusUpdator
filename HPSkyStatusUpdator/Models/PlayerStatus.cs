@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿/*
+
+using System.Text.Json.Serialization;
 
 namespace HPSkyStatusUpdator.Models;
 
@@ -32,3 +34,5 @@ public class PlayerStatus
             _ => Mode
         };
 }
+
+*/

@@ -1,4 +1,6 @@
-﻿using HPSkyStatusUpdator.Models;
+﻿/*
+
+using HPSkyStatusUpdator.Models;
 using System.Text.Json;
 
 namespace HPSkyStatusUpdator.Services;
@@ -129,3 +131,4 @@ public class HypixelPlayerService
         return false;
     }
 }
+*/

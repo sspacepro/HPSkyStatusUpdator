@@ -26,9 +26,9 @@ builder.Services.AddSingleton<DatabaseService>();
 
 builder.Services.AddSingleton<SettingsService>();
 
-builder.Services.AddHostedService<PlayerWatcherService>();
+//builder.Services.AddHostedService<PlayerWatcherService>();
 
-builder.Services.AddHttpClient<HypixelPlayerService>();
+//builder.Services.AddHttpClient<HypixelPlayerService>();
 
 builder.Services.AddSingleton<NotificationService>();
 
@@ -36,7 +36,7 @@ builder.Services.AddHttpClient<AuctionService>();
 
 builder.Services.AddSingleton<AuctionService>();
 
-builder.Services.AddHostedService<PlayerWatcherService>();
+//builder.Services.AddHostedService<PlayerWatcherService>();
 
 builder.Services.AddHostedService<AuctionWatcherService>();
 
@@ -355,7 +355,7 @@ app.MapGet("/api/admin/settings/hypixel-update-interval-seconds",
     );
 });
 
-
+/*
 app.MapGet("/api/v1/playerstatus",
 (
     HttpContext context,
@@ -368,6 +368,8 @@ app.MapGet("/api/v1/playerstatus",
         users.GetPlayerStatuses(user.ClientId)
     );
 });
+*/
+/*
 app.MapDelete("/api/v1/watch/{username}",
 (
     HttpContext context,
@@ -388,6 +390,8 @@ app.MapDelete("/api/v1/watch/{username}",
 
     return Results.Ok();
 });
+*/
+/*
 app.MapGet("/api/v1/watch",
 (
     HttpContext context,
@@ -400,6 +404,7 @@ app.MapGet("/api/v1/watch",
         users.GetWatchList(user.ClientId)
     );
 });
+*/
 app.MapGet("/api/v1/notifications",
 (
     HttpContext context,
@@ -412,6 +417,7 @@ app.MapGet("/api/v1/notifications",
 
     return Results.Ok(result);
 });
+/*
 app.MapPost("/api/v1/watch/{username}",
 async (
     HttpContext context,
@@ -441,6 +447,7 @@ async (
         return Results.BadRequest(ex.Message);
     }
 });
+*/
 app.MapGet("/api/admin/stats",
 (
     UserService users,

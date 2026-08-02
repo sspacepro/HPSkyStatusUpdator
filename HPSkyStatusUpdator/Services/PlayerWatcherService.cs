@@ -1,4 +1,5 @@
-﻿using HPSkyStatusUpdator.Models;
+﻿/*
+using HPSkyStatusUpdator.Models;
 
 namespace HPSkyStatusUpdator.Services;
 
@@ -94,3 +95,4 @@ public class PlayerWatcherService : BackgroundService
         }
     }
 }
+*/

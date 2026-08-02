@@ -1,4 +1,5 @@
-﻿namespace HPSkyStatusUpdator.Models;
+﻿/*
+namespace HPSkyStatusUpdator.Models;
 
 public class WatchedPlayer
 {
@@ -6,3 +7,5 @@ public class WatchedPlayer
     public string Uuid { get; set; } = "";
     public DateTime ExpiresAt { get; set; }
 }
+
+*/

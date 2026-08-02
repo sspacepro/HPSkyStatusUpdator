@@ -59,7 +59,9 @@ public class UserService
     }
     private readonly DatabaseService _database;
     private readonly SettingsService _settings;
-    private readonly HypixelPlayerService _hypixelPlayers;
+    //private readonly HypixelPlayerService _hypixelPlayers;
+    
+    /*
     public List<string> GetWatchedPlayers()
     {
         using var connection = _database.GetConnection();
@@ -86,6 +88,8 @@ public class UserService
         return players;
     }
 
+    */
+    /*
     public void UpdatePlayerStatus(
     string username,
     bool skyBlockOnline,
@@ -135,6 +139,8 @@ public class UserService
         command.ExecuteNonQuery();
     }
 
+    */
+    /*
     public List<PlayerStatus> GetPlayerStatuses(string clientId)
     {
         using var connection = _database.GetConnection();
@@ -185,7 +191,7 @@ public class UserService
         _settings = settings;
         _hypixelPlayers = hypixelPlayers;
     }
-
+    */
     public List<User> GetAllUsers()
     {
         using var connection = _database.GetConnection();
@@ -237,6 +243,8 @@ public class UserService
 
         return Convert.ToInt32(command.ExecuteScalar());
     }
+
+    /*
     public async Task<bool> AddWatchPlayer(
      string clientId,
      string username,
@@ -307,7 +315,8 @@ public class UserService
 
         return rows > 0;
     }
-
+    */
+    /*
     public List<string> GetClientsWatching(string uuid)
     {
         using var connection = _database.GetConnection();
@@ -371,6 +380,7 @@ public class UserService
             Mode = reader.GetString(2)
         };
     }
+    */
     public bool SetBlocked(string username, bool blocked)
     {
         using var connection = _database.GetConnection();
@@ -778,6 +788,8 @@ public class UserService
 
         return rows > 0;
     }
+
+    /*
     public List<object> GetWatchList(string clientId)
     {
         using var connection = _database.GetConnection();
@@ -813,6 +825,8 @@ public class UserService
 
         return players;
     }
+    */
+    /*
     public List<WatchedPlayer> GetUniqueWatchedPlayers()
     {
         using var connection = _database.GetConnection();
@@ -844,7 +858,7 @@ public class UserService
 
         return players;
     }
-
+    */
     public List<AuctionWatchResponse> GetAuctionWatchResponses(
     string clientId)
     {
