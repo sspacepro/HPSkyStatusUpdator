@@ -185,13 +185,14 @@ public class UserService
 
         return results;
     }
-    public UserService(DatabaseService database, SettingsService settings, HypixelPlayerService hypixelPlayers)
+    */
+    public UserService(DatabaseService database, SettingsService settings  /*, HypixelPlayerService hypixelPlayers */ )
     {
         _database = database;
         _settings = settings;
-        _hypixelPlayers = hypixelPlayers;
+        //_hypixelPlayers = hypixelPlayers;
     }
-    */
+    
     public List<User> GetAllUsers()
     {
         using var connection = _database.GetConnection();

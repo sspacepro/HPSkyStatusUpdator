@@ -565,6 +565,8 @@ app.MapPost("/api/v1/register",
         });
     }
 });
+/*
+
 app.MapGet("/api/v1/watch/status",
 (
     HttpContext context,
@@ -577,6 +579,8 @@ app.MapGet("/api/v1/watch/status",
         users.GetPlayerStatuses(user.ClientId)
     );
 });
+
+*/
 app.MapPost("/api/admin/shutdown",
 (
     IHostApplicationLifetime lifetime
