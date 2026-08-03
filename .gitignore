@@ -365,3 +365,4 @@ FodyWeavers.xsd
 hpstatus.db
 bin/
 obj/
+/HPSkyStatusUpdator/Data/hpstatus.db
