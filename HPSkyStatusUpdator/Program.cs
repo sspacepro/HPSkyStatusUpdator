@@ -66,32 +66,6 @@ Console.SetOut(new MultiTextWriter(
     logFile
 ));
 
-app.MapPost("/api/admin/settings/max-requests-per-minute/{requests}",
-(
-    int requests,
-    SettingsService settings
-) =>
-{
-    settings.SetInt(
-        SettingKeys.MaxRequestsPerMinute,
-        requests);
-
-    return Results.Ok();
-});
-
-app.MapGet("/api/admin/settings/max-requests-per-minute",
-(
-    SettingsService settings
-) =>
-{
-    return Results.Ok(
-        settings.GetInt(
-            SettingKeys.MaxRequestsPerMinute,
-            60
-        )
-    );
-});
-
 app.MapPost("/api/admin/settings/watch-cleanup-interval-minutes/{minutes}",
 (
     int minutes,
@@ -111,12 +85,13 @@ app.MapGet("/api/admin/settings/watch-cleanup-interval-minutes",
     SettingsService settings
 ) =>
 {
-    int minutes = settings.GetInt(
+
+    return Results.Ok(
+    settings.GetInt(
         SettingKeys.WatchCleanupIntervalMinutes,
         60
-    );
-
-    return Results.Ok(minutes);
+    )
+);
 });
 
 app.MapPost("/api/admin/settings/watch-expiration-days/{days}",
@@ -138,12 +113,14 @@ app.MapGet("/api/admin/settings/watch-expiration-days",
     SettingsService settings
 ) =>
 {
-    int days = settings.GetInt(
+
+    return Results.Ok(
+    settings.GetInt(
         SettingKeys.WatchExpirationDays,
         30
-    );
+    )
+);
 
-    return Results.Ok(days);
 });
 
 app.MapGet("/api/admin/settings/auction-cache-refresh",
@@ -151,15 +128,15 @@ app.MapGet("/api/admin/settings/auction-cache-refresh",
     SettingsService settings
 ) =>
 {
-    int seconds = settings.GetInt(
+
+
+    return Results.Ok(
+    settings.GetInt(
         SettingKeys.AuctionCacheRefreshSeconds,
         60
-    );
+    )
+);
 
-    return Results.Ok(new
-    {
-        AuctionCacheRefreshSeconds = seconds
-    });
 });
 
 
@@ -168,15 +145,14 @@ app.MapGet("/api/admin/settings/auction-check-interval",
     SettingsService settings
 ) =>
 {
-    int seconds = settings.GetInt(
-        SettingKeys.AuctionCheckIntervalSeconds,
-        10
-    );
 
-    return Results.Ok(new
-    {
-        AuctionCheckIntervalSeconds = seconds
-    });
+    return Results.Ok(
+settings.GetInt(
+    SettingKeys.AuctionCheckIntervalSeconds,
+    60
+)
+);
+
 });
 
 app.MapPost("/api/admin/settings/auction-check-interval/{seconds}",
@@ -650,13 +626,37 @@ app.MapGet("/api/admin/settings/{key}",
 
     return Results.Ok(value);
 });
-
 app.MapGet("/api/admin/validate", () =>
 {
     return Results.Ok(new
     {
         valid = true
     });
+});
+app.MapPost("/api/admin/settings/max-requests-per-minute/{requests}",
+(
+    int requests,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.MaxRequestsPerMinute,
+        requests);
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/max-requests-per-minute",
+(
+    SettingsService settings
+) =>
+{
+    return Results.Ok(
+        settings.GetInt(
+            SettingKeys.MaxRequestsPerMinute,
+            60
+        )
+    );
 });
 
 app.Run();
