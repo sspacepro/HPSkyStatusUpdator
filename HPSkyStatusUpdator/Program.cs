@@ -66,6 +66,32 @@ Console.SetOut(new MultiTextWriter(
     logFile
 ));
 
+app.MapPost("/api/admin/settings/max-requests-per-minute/{requests}",
+(
+    int requests,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.MaxRequestsPerMinute,
+        requests);
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/max-requests-per-minute",
+(
+    SettingsService settings
+) =>
+{
+    return Results.Ok(
+        settings.GetInt(
+            SettingKeys.MaxRequestsPerMinute,
+            60
+        )
+    );
+});
+
 app.MapPost("/api/admin/settings/watch-cleanup-interval-minutes/{minutes}",
 (
     int minutes,
@@ -623,6 +649,14 @@ app.MapGet("/api/admin/settings/{key}",
         return Results.NotFound();
 
     return Results.Ok(value);
+});
+
+app.MapGet("/api/admin/validate", () =>
+{
+    return Results.Ok(new
+    {
+        valid = true
+    });
 });
 
 app.Run();

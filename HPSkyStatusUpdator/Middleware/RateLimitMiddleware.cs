@@ -1,4 +1,5 @@
-﻿using HPSkyStatusUpdator.Services;
+﻿using HPSkyStatusUpdator.Configuration;
+using HPSkyStatusUpdator.Services;
 
 namespace HPSkyStatusUpdator.Middleware;
 
@@ -15,7 +16,7 @@ public class RateLimitMiddleware
     public async Task InvokeAsync(
         HttpContext context,
         RateLimitService limits,
-        IConfiguration config)
+        SettingsService settings)
     {
         var user = context.Items["User"] as Models.User;
 
@@ -29,7 +30,9 @@ public class RateLimitMiddleware
 
 
         int maxRequests =
-            config.GetValue<int>("Settings:MaxRequestsPerMinute");
+            settings.GetInt(
+                SettingKeys.MaxRequestsPerMinute,
+                 60);
 
 
         if (!limits.Check(user.ClientId, maxRequests))
