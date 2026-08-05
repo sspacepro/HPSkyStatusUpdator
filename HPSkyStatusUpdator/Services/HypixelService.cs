@@ -33,10 +33,10 @@ public class HypixelService
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
+                _skyblockPlayers = -1;
                 Console.WriteLine("Hypixel API key not configured.");
                 return;
             }
-            
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
@@ -49,10 +49,10 @@ public class HypixelService
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine("Hypixel request failed");
+                _skyblockPlayers = -1;
+                Console.WriteLine($"Hypixel request failed: {(int)response.StatusCode}");
                 return;
             }
-
 
             string json = await response.Content.ReadAsStringAsync();
 
@@ -64,13 +64,13 @@ public class HypixelService
                 .GetProperty("players")
                 .GetInt32();
 
-
             Console.WriteLine(
                 $"SkyBlock players: {_skyblockPlayers}"
             );
         }
         catch (Exception ex)
         {
+            _skyblockPlayers = -1;
             Console.WriteLine(ex);
         }
     }

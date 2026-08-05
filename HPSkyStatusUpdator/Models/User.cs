@@ -6,4 +6,5 @@ public class User
     public string ClientId { get; set; } = "";
     public bool Blocked { get; set; } = false;
     public string LastIp { get; set; } = "";
+    public DateTime LastSeen { get; set; }
 }

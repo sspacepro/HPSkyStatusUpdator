@@ -206,7 +206,8 @@ public class UserService
     SELECT Username,
            ClientId,
            Blocked,
-           LastIp
+           LastIp,
+           LastSeen
     FROM Users
     ORDER BY Username
     """;
@@ -222,7 +223,10 @@ public class UserService
                 Username = reader.GetString(0),
                 ClientId = reader.GetString(1),
                 Blocked = reader.GetInt32(2) == 1,
-                LastIp = reader.GetString(3)
+                LastIp = reader.GetString(3),
+                LastSeen = reader.IsDBNull(4)
+                    ? DateTime.MinValue
+                    : reader.GetDateTime(4)
             });
         }
 
@@ -915,7 +919,8 @@ public class UserService
             Username = username,
             ClientId = Guid.NewGuid().ToString(),
             Blocked = false,
-            LastIp = ip
+            LastIp = ip,
+            LastSeen = DateTime.UtcNow
         };
 
         var insertCommand = connection.CreateCommand();
@@ -927,14 +932,16 @@ public class UserService
         Username,
         ClientId,
         Blocked,
-        LastIp
+        LastIp,
+        LastSeen
     )
     VALUES
     (
         $username,
         $clientId,
         $blocked,
-        $lastIp
+        $lastIp,
+        $lastSeen
     )
     """;
 
@@ -942,6 +949,7 @@ public class UserService
         insertCommand.Parameters.AddWithValue("$clientId", user.ClientId);
         insertCommand.Parameters.AddWithValue("$blocked", user.Blocked ? 1 : 0);
         insertCommand.Parameters.AddWithValue("$lastIp", user.LastIp);
+        insertCommand.Parameters.AddWithValue("$lastSeen", user.LastSeen);
 
         insertCommand.ExecuteNonQuery();
 
@@ -992,6 +1000,45 @@ public class UserService
             clientId);
 
         command.ExecuteNonQuery();
+    }
+    public bool DeleteUser(string clientId)
+    {
+        using var connection = _database.GetConnection();
+
+        connection.Open();
+
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            var command = connection.CreateCommand();
+            command.Transaction = transaction;
+
+            command.CommandText =
+            """
+        DELETE FROM WatchList
+        WHERE ClientId = $clientId;
+
+        DELETE FROM AuctionWatchList
+        WHERE ClientId = $clientId;
+
+        DELETE FROM Users
+        WHERE ClientId = $clientId;
+        """;
+
+            command.Parameters.AddWithValue("$clientId", clientId);
+
+            int rows = command.ExecuteNonQuery();
+
+            transaction.Commit();
+
+            return rows > 0;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
 }

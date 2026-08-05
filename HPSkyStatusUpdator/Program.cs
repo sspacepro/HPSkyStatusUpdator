@@ -42,6 +42,7 @@ builder.Services.AddHostedService<AuctionWatcherService>();
 
 builder.Services.AddSingleton<NotificationService>();
 
+builder.Services.AddHostedService<ItemCacheService>();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -65,6 +66,44 @@ Console.SetOut(new MultiTextWriter(
     Console.Out,
     logFile
 ));
+
+app.MapGet(
+"/api/v1/items",
+(ItemCacheService items) =>
+{
+    return Results.Ok(
+        items.GetItems()
+        .Where(x => !string.IsNullOrWhiteSpace(x.Id))
+    );
+});
+
+app.MapPost("/api/admin/settings/item-cache-update-minutes/{minutes}",
+(
+    int minutes,
+    SettingsService settings
+) =>
+{
+    settings.SetInt(
+        SettingKeys.ItemCacheUpdateMinutes,
+        minutes
+    );
+
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/item-cache-update-minutes",
+(
+    SettingsService settings
+) =>
+{
+    int minutes = settings.GetInt(
+        SettingKeys.ItemCacheUpdateMinutes,
+        1440
+    );
+
+    return Results.Ok(minutes);
+});
+
 
 app.MapPost("/api/admin/settings/watch-cleanup-interval-minutes/{minutes}",
 (
@@ -657,6 +696,19 @@ app.MapGet("/api/admin/settings/max-requests-per-minute",
             60
         )
     );
+});
+
+app.MapDelete("/api/admin/users/{clientId}",
+(
+    string clientId,
+    UserService users
+) =>
+{
+    bool deleted = users.DeleteUser(clientId);
+
+    return deleted
+        ? Results.Ok()
+        : Results.NotFound();
 });
 
 app.Run();

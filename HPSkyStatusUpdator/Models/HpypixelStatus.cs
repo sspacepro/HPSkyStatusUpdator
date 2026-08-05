@@ -1,4 +1,5 @@
-﻿namespace HPSkyStatusUpdator.Models;
+﻿/*
+namespace HPSkyStatusUpdator.Models;
 
 using System.Collections.Generic;
 public class HypixelStatus
@@ -49,3 +50,4 @@ public class HypixelStatus
         }
     }
 }
+*/
