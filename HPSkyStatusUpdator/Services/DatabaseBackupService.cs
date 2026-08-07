@@ -7,12 +7,15 @@ public class DatabaseBackupService : BackgroundService
     private readonly SettingsService _settings;
     private readonly ILogger<HypixelService> _logger;
 
-    private const string DatabasePath =
-        "Data/hpstatus.db";
+    private static readonly string DataPath =
+        Environment.GetEnvironmentVariable("DATA_PATH")
+        ?? Path.Combine(AppContext.BaseDirectory, "Data");
 
-    private const string BackupFolder =
-        "Data/Backups";
+    private static readonly string DatabasePath =
+        Path.Combine(DataPath, "hpstatus.db");
 
+    private static readonly string BackupFolder =
+        Path.Combine(DataPath, "Backups");
 
     public DatabaseBackupService(
         SettingsService settings,
