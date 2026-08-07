@@ -2,13 +2,16 @@ using HPSkyStatusUpdator.Configuration;
 using HPSkyStatusUpdator.Middleware;
 using HPSkyStatusUpdator.Models;
 using HPSkyStatusUpdator.Services;
+using Microsoft.Extensions.Logging;
 using System.IO;
 
 
 DateTime serverStartTime = DateTime.UtcNow;
-
 var builder = WebApplication.CreateBuilder(args);
 
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 builder.Services.AddHttpClient<HypixelService>();
 
@@ -57,6 +60,11 @@ builder.Services.AddSingleton<ServiceHealthService>();
 
 builder.Services.AddSingleton<HealthService>();
 builder.Services.AddHostedService<DatabaseBackupService>();
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.BackgroundServiceExceptionBehavior =
+        BackgroundServiceExceptionBehavior.Ignore;
+});
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())

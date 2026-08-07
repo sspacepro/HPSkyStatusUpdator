@@ -5,18 +5,41 @@ namespace HPSkyStatusUpdator.Services;
 
 public class DatabaseService
 {
-    private readonly string _connectionString =
-        "Data Source=Data/hpstatus.db";
+    private readonly string _connectionString;
     private readonly ILogger<DatabaseService> _logger;
     public DatabaseService(ILogger<DatabaseService> logger)
     {
         _logger = logger;
-        Directory.CreateDirectory("Data");
+
+        var dataPath =
+            Environment.GetEnvironmentVariable("DATA_PATH")
+            ?? Path.Combine(AppContext.BaseDirectory, "Data");
+
+
+        Directory.CreateDirectory(dataPath);
+
+
+        var databasePath =
+            Path.Combine(dataPath, "hpstatus.db");
+
+
+        _connectionString =
+            $"Data Source={databasePath}";
+
 
         using var connection =
             new SqliteConnection(_connectionString);
 
         connection.Open();
+        var pragmaCommand = connection.CreateCommand();
+
+        pragmaCommand.CommandText =
+        """
+        PRAGMA journal_mode=WAL;
+        PRAGMA synchronous=NORMAL;
+        """;
+
+        pragmaCommand.ExecuteNonQuery();
         var migrationCommand = connection.CreateCommand();
 
         migrationCommand.CommandText =
@@ -104,7 +127,7 @@ public class DatabaseService
             Tier TEXT,
             Stars INTEGER,
             Recombobulated INTEGER,
-            PetLevel INTEGER,
+            PetXp INTEGER,
 
             NotifyBelow INTEGER NOT NULL,
             LastLowestBin INTEGER NOT NULL DEFAULT 0,
@@ -117,7 +140,7 @@ public class DatabaseService
                 Tier,
                 Stars,
                 Recombobulated,
-                PetLevel
+                PetXp
             ),
 
             FOREIGN KEY(ClientId)
@@ -160,75 +183,7 @@ public class DatabaseService
 
         knownItemsCommand.ExecuteNonQuery();
 
-
-
-        if (!HasMigration(connection, 1))
-        {
-            _logger.LogInformation("Applying migration 1...");
-
-
-            AddMigration(connection, 1);
-        }
-        if (!HasMigration(connection, 3))
-        {
-            _logger.LogInformation("Applying migration 3...");
-
-            var command2 = connection.CreateCommand();
-
-            command2.CommandText =
-            """
-            CREATE TABLE AuctionWatchList_New
-            (
-                ClientId TEXT NOT NULL,
-                ItemTag TEXT NOT NULL,
-
-                Tier TEXT,
-                Stars INTEGER,
-                Recombobulated INTEGER,
-                PetLevel INTEGER,
-
-                NotifyBelow INTEGER NOT NULL,
-                LastLowestBin INTEGER NOT NULL DEFAULT 0,
-                Available INTEGER NOT NULL DEFAULT 0,
-
-                PRIMARY KEY(
-                    ClientId,
-                    ItemTag,
-                    Tier,
-                    Stars,
-                    Recombobulated,
-                    PetLevel
-                ),
-
-                FOREIGN KEY(ClientId)
-                    REFERENCES Users(ClientId)
-                    ON DELETE CASCADE
-            );
-
-            INSERT INTO AuctionWatchList_New
-            SELECT
-                ClientId,
-                ItemTag,
-                Tier,
-                Stars,
-                Recombobulated,
-                PetLevel,
-                NotifyBelow,
-                LastLowestBin,
-                Available
-            FROM AuctionWatchList;
-
-            DROP TABLE AuctionWatchList;
-
-            ALTER TABLE AuctionWatchList_New
-            RENAME TO AuctionWatchList;
-            """;
-
-            command2.ExecuteNonQuery();
-
-            AddMigration(connection, 3);
-        }
-
+        
 
     }
 
