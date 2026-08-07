@@ -9,17 +9,23 @@ public class AuctionWatcherService : BackgroundService
     private readonly AuctionService _auctions;
     private readonly SettingsService _settings;
     private readonly NotificationService _notifications;
+    private readonly ServiceHealthService _health;
+    private readonly ILogger<AuctionWatcherService> _logger;
 
     public AuctionWatcherService(
         UserService users,
         AuctionService auctions,
         SettingsService settings,
-        NotificationService notifications)
+        NotificationService notifications,
+        ServiceHealthService health,
+        ILogger<AuctionWatcherService> logger)
     {
         _users = users;
         _auctions = auctions;
         _settings = settings;
         _notifications = notifications;
+        _health = health;
+        _logger = logger;
     }
 
 
@@ -29,6 +35,7 @@ public class AuctionWatcherService : BackgroundService
         DateTime lastCleanup = DateTime.UtcNow;
         while (!stoppingToken.IsCancellationRequested)
         {
+            _health.Beat("AuctionWatcherService");
             var watches = _users.GetAuctionWatches();
             int cleanupMinutes = _settings.GetInt(
                 SettingKeys.WatchCleanupIntervalMinutes,
@@ -41,12 +48,12 @@ public class AuctionWatcherService : BackgroundService
 
                 lastCleanup = DateTime.UtcNow;
 
-                Console.WriteLine($"Deleted expired watches.");
+                _logger.LogInformation("Deleted expired watches.");
             }
 
             foreach (var watch in watches)
             {
-                Console.WriteLine(
+                _logger.LogInformation(
                     $"Auction: {watch.ItemTag} | Tier:{watch.Tier} | Stars:{watch.Stars} | Recomb:{watch.Recombobulated} | XP:{watch.PetXp}"
                 );
             }
@@ -105,7 +112,7 @@ public class AuctionWatcherService : BackgroundService
                         .FirstOrDefault();
 
 
-                    Console.WriteLine(
+                    _logger.LogInformation(
                         $"{search.ItemTag}: {(lowest == null ? "unavailable" : lowest.Price.ToString("N0"))}"
                     );
 
@@ -176,16 +183,14 @@ public class AuctionWatcherService : BackgroundService
                         );
 
 
-                        Console.WriteLine(
+                        _logger.LogInformation(
                             $"Updated {watch.ClientId}: {watch.ItemTag} {lowest.Price:N0}"
                         );
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(
-                        $"Auction error {search.ItemTag}: {ex.Message}"
-                    );
+                    _logger.LogError(ex, $"Auction error {search.ItemTag}: {ex.Message}");
                 }
             }
 

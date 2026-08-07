@@ -9,6 +9,7 @@ public class AuctionService
 {
     private readonly HttpClient _client;
     private volatile List<DecodedAuction> _cache = new();
+    private readonly ILogger<AuctionService> _logger;
 
     private volatile Dictionary<string, List<DecodedAuction>> _auctionIndex =
     new(StringComparer.OrdinalIgnoreCase);
@@ -22,14 +23,25 @@ public class AuctionService
 
     private readonly TimeSpan _cacheDuration =
         TimeSpan.FromMinutes(1);
-    public AuctionService(HttpClient client)
+    public AuctionService(HttpClient client, ILogger<AuctionService> logger)
     {
         _client = client;
+        _logger = logger;
     }
 
     public IReadOnlyList<DecodedAuction> GetAllAuctions()
     {
         return _cache;
+    }
+
+    public int GetAuctionCount()
+    {
+        return _cache.Count;
+    }
+
+    public DateTime GetLastRefreshTime()
+    {
+        return _cacheTime;
     }
 
     public IReadOnlyList<DecodedAuction> GetAuctions(string itemId)
@@ -67,7 +79,7 @@ public class AuctionService
         int totalPages =
             totalPagesElement.GetInt32();
 
-        Console.WriteLine(
+        _logger.LogInformation(
             $"Downloading {totalPages} auction pages"
         );
 
@@ -130,9 +142,7 @@ public class AuctionService
         }
         catch (Exception ex)
         {
-            Console.WriteLine(
-                $"Auction page error {page}: {ex.Message}"
-            );
+            _logger.LogError(ex, $"Auction page error {page}: {ex.Message}");
 
             return null;
         }
@@ -140,7 +150,7 @@ public class AuctionService
 
     public async Task RefreshCache()
     {
-        Console.WriteLine("Refreshing auction cache...");
+        _logger.LogInformation("Refreshing auction cache...");
 
         var newCache = await DownloadAuctions();
 
@@ -162,7 +172,7 @@ public class AuctionService
         _cacheTime = DateTime.UtcNow;
 
 
-        Console.WriteLine(
+        _logger.LogInformation(
             $"Auction cache updated: {_cache.Count} auctions"
         );
     }

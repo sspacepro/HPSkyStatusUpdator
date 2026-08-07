@@ -6,13 +6,15 @@ public class HypixelUpdater : BackgroundService
 {
     private readonly HypixelService _hypixelService;
     private readonly SettingsService _settings;
-
+    private readonly ServiceHealthService _health;
     public HypixelUpdater(
         HypixelService hypixelService,
-        SettingsService settings)
+        SettingsService settings,
+        ServiceHealthService health)
     {
         _hypixelService = hypixelService;
         _settings = settings;
+        _health = health;
     }
 
 
@@ -21,6 +23,7 @@ public class HypixelUpdater : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            _health.Beat("HypixelUpdater");
             await _hypixelService.Update();
 
             int seconds = _settings.GetInt(

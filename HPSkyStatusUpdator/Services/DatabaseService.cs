@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using HPSkyStatusUpdator.Models;
+using Microsoft.Data.Sqlite;
 
 namespace HPSkyStatusUpdator.Services;
 
@@ -6,9 +7,10 @@ public class DatabaseService
 {
     private readonly string _connectionString =
         "Data Source=Data/hpstatus.db";
-
-    public DatabaseService()
+    private readonly ILogger<DatabaseService> _logger;
+    public DatabaseService(ILogger<DatabaseService> logger)
     {
+        _logger = logger;
         Directory.CreateDirectory("Data");
 
         using var connection =
@@ -143,18 +145,33 @@ public class DatabaseService
 
         auctionStatusCommand.ExecuteNonQuery();
 
+        var knownItemsCommand = connection.CreateCommand();
+
+        knownItemsCommand.CommandText =
+        """
+        CREATE TABLE IF NOT EXISTS KnownAuctionItems
+        (
+            Id TEXT NOT NULL PRIMARY KEY,
+            Name TEXT NOT NULL,
+            Tier TEXT,
+            CanRecombobulate INTEGER
+        );
+        """;
+
+        knownItemsCommand.ExecuteNonQuery();
+
 
 
         if (!HasMigration(connection, 1))
         {
-            Console.WriteLine("Applying migration 1...");
+            _logger.LogInformation("Applying migration 1...");
 
 
             AddMigration(connection, 1);
         }
         if (!HasMigration(connection, 3))
         {
-            Console.WriteLine("Applying migration 3...");
+            _logger.LogInformation("Applying migration 3...");
 
             var command2 = connection.CreateCommand();
 
@@ -267,5 +284,87 @@ public class DatabaseService
         );
 
         command.ExecuteNonQuery();
+    }
+    public void UpsertKnownAuctionItem(HypixelItem item)
+    {
+        using var connection = GetConnection();
+
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    INSERT INTO KnownAuctionItems
+    (
+        Id,
+        Name,
+        Tier,
+        CanRecombobulate
+    )
+    VALUES
+    (
+        $id,
+        $name,
+        $tier,
+        $recomb
+    )
+    ON CONFLICT(Id)
+    DO UPDATE SET
+        Name = excluded.Name,
+        Tier = excluded.Tier,
+        CanRecombobulate = excluded.CanRecombobulate;
+    """;
+
+        command.Parameters.AddWithValue("$id", item.Id);
+        command.Parameters.AddWithValue("$name", item.Name);
+        command.Parameters.AddWithValue("$tier", (object?)item.Tier ?? DBNull.Value);
+        command.Parameters.AddWithValue("$recomb",
+            item.CanRecombobulate.HasValue
+                ? item.CanRecombobulate.Value ? 1 : 0
+                : DBNull.Value);
+
+        command.ExecuteNonQuery();
+    }
+
+    public List<HypixelItem> GetKnownAuctionItems()
+    {
+        using var connection = GetConnection();
+
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+
+        command.CommandText =
+        """
+    SELECT
+        Id,
+        Name,
+        Tier,
+        CanRecombobulate
+    FROM KnownAuctionItems
+    ORDER BY Name;
+    """;
+
+        using var reader = command.ExecuteReader();
+
+        List<HypixelItem> items = new();
+
+        while (reader.Read())
+        {
+            items.Add(new HypixelItem
+            {
+                Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                Tier = reader.IsDBNull(2)
+                    ? null
+                    : reader.GetString(2),
+                CanRecombobulate = reader.IsDBNull(3)
+                    ? null
+                    : reader.GetInt32(3) == 1
+            });
+        }
+
+        return items;
     }
 }

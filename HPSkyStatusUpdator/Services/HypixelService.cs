@@ -7,13 +7,15 @@ public class HypixelService
 {
     private readonly HttpClient _client;
     private readonly SettingsService _settings;
+    private readonly ILogger<HypixelService> _logger;
 
     private int _skyblockPlayers = -1;
 
-    public HypixelService(HttpClient client, SettingsService settings)
+    public HypixelService(HttpClient client, SettingsService settings, ILogger<HypixelService> logger)
     {
         _client = client;
         _settings = settings;
+        _logger = logger;
     }
 
 
@@ -34,7 +36,7 @@ public class HypixelService
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 _skyblockPlayers = -1;
-                Console.WriteLine("Hypixel API key not configured.");
+                _logger.LogInformation("Hypixel API key not configured.");
                 return;
             }
 
@@ -50,7 +52,7 @@ public class HypixelService
             if (!response.IsSuccessStatusCode)
             {
                 _skyblockPlayers = -1;
-                Console.WriteLine($"Hypixel request failed: {(int)response.StatusCode}");
+                _logger.LogInformation($"Hypixel request failed: {(int)response.StatusCode}");
                 return;
             }
 
@@ -64,14 +66,14 @@ public class HypixelService
                 .GetProperty("players")
                 .GetInt32();
 
-            Console.WriteLine(
+            _logger.LogInformation(
                 $"SkyBlock players: {_skyblockPlayers}"
             );
         }
         catch (Exception ex)
         {
             _skyblockPlayers = -1;
-            Console.WriteLine(ex);
+            _logger.LogError(ex, "Error occurred while updating Hypixel player count.");
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using HPSkyStatusUpdator.Models;
+using System.Collections.Concurrent;
 
 namespace HPSkyStatusUpdator.Services;
 
@@ -31,5 +32,9 @@ public class NotificationService
         }
 
         return notifications;
+    }
+    public int GetQueuedNotificationCount()
+    {
+        return _queues.Values.Sum(queue => queue.Count);
     }
 }

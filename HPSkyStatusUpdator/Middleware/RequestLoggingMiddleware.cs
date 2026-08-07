@@ -1,14 +1,18 @@
 ﻿using HPSkyStatusUpdator.Models;
+using HPSkyStatusUpdator.Services;
 
 namespace HPSkyStatusUpdator.Middleware;
+
+
 
 public class RequestLoggingMiddleware
 {
     private readonly RequestDelegate _next;
-
-    public RequestLoggingMiddleware(RequestDelegate next)
+    private readonly ILogger<RequestLoggingMiddleware> _logger;
+    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
 
@@ -30,7 +34,7 @@ public class RequestLoggingMiddleware
             user?.Username ?? "Unknown";
 
 
-        Console.WriteLine(
+        _logger.LogInformation(
             $"[{DateTime.Now:HH:mm:ss}] " +
             $"{username} " +
             $"{context.Request.Method} " +

@@ -5,6 +5,8 @@ using HPSkyStatusUpdator.Services;
 using System.IO;
 
 
+DateTime serverStartTime = DateTime.UtcNow;
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -26,6 +28,10 @@ builder.Services.AddSingleton<DatabaseService>();
 
 builder.Services.AddSingleton<SettingsService>();
 
+//builder.Services.AddSingleton<ItemCacheService>();
+
+//builder.Services.AddHostedService<ItemCacheService>();
+
 //builder.Services.AddHostedService<PlayerWatcherService>();
 
 //builder.Services.AddHttpClient<HypixelPlayerService>();
@@ -42,7 +48,12 @@ builder.Services.AddHostedService<AuctionWatcherService>();
 
 builder.Services.AddSingleton<NotificationService>();
 
-builder.Services.AddHostedService<ItemCacheService>();
+builder.Services.AddSingleton<ItemCacheService>();
+
+builder.Services.AddHostedService(provider =>
+    provider.GetRequiredService<ItemCacheService>());
+
+builder.Services.AddSingleton<ServiceHealthService>();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -56,7 +67,7 @@ app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<AdminAuthenticationMiddleware>();
 app.UseMiddleware<RateLimitMiddleware>();
 
-
+/*
 var logFile = new StreamWriter("console.log", append: true)
 {
     AutoFlush = true
@@ -66,14 +77,52 @@ Console.SetOut(new MultiTextWriter(
     Console.Out,
     logFile
 ));
-
+*/
 app.MapGet(
-"/api/v1/items",
-(ItemCacheService items) =>
+"/api/v1/health",
+(
+    HypixelService hypixel,
+    AuctionService auctions,
+    ItemCacheService items,
+    NotificationService notifications,
+    ServiceHealthService health
+) =>
+{
+    return Results.Ok(new
+    {
+        Status = "Healthy",
+
+        UptimeSeconds =
+            (long)(DateTime.UtcNow - serverStartTime)
+            .TotalSeconds,
+
+        HypixelOnline =
+            hypixel.GetSkyblockPlayers() >= 0,
+
+        SkyBlockPlayers =
+            hypixel.GetSkyblockPlayers(),
+
+        CachedAuctions =
+            auctions.GetAuctionCount(),
+
+        CachedItems =
+            items.GetItemCount(),
+
+        QueuedNotifications =
+            notifications.GetQueuedNotificationCount(),
+
+        Services =
+            health.GetStatus()
+    });
+});
+
+app.MapGet("/api/v1/items",
+(
+    ItemCacheService itemCache
+) =>
 {
     return Results.Ok(
-        items.GetItems()
-        .Where(x => !string.IsNullOrWhiteSpace(x.Id))
+        itemCache.GetItems()
     );
 });
 
