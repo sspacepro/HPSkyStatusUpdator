@@ -55,6 +55,9 @@ builder.Services.AddHostedService(provider =>
 
 builder.Services.AddSingleton<ServiceHealthService>();
 
+builder.Services.AddSingleton<HealthService>();
+builder.Services.AddHostedService<DatabaseBackupService>();
+
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -78,6 +81,46 @@ Console.SetOut(new MultiTextWriter(
     logFile
 ));
 */
+
+app.MapGet(
+"/api/admin/status",
+(
+    HypixelService hypixel,
+    AuctionService auctions,
+    ItemCacheService items,
+    NotificationService notifications,
+    UserService users
+) =>
+{
+    return Results.Ok(new
+    {
+        Status = "Online",
+
+        UptimeSeconds =
+            (long)(DateTime.UtcNow - serverStartTime)
+            .TotalSeconds,
+
+        Users =
+            users.GetAllUsers().Count,
+
+        SkyBlockPlayers =
+            hypixel.GetSkyblockPlayers(),
+
+        HypixelOnline =
+            hypixel.GetSkyblockPlayers() >= 0,
+
+        CachedAuctions =
+            auctions.GetAllAuctions().Count,
+
+        CachedItems =
+            items.GetItems().Count,
+
+        QueuedNotifications =
+            notifications.GetQueuedNotificationCount(),
+
+        Time = DateTime.UtcNow
+    });
+});
 app.MapGet(
 "/api/v1/health",
 (
@@ -88,9 +131,14 @@ app.MapGet(
     ServiceHealthService health
 ) =>
 {
+    bool healthy =
+     auctions.GetAuctionCount() > 0
+    && items.GetItemCount() > 0;
     return Results.Ok(new
     {
-        Status = "Healthy",
+        Status = healthy
+    ? "Healthy"
+    : "Degraded",
 
         UptimeSeconds =
             (long)(DateTime.UtcNow - serverStartTime)
@@ -113,6 +161,8 @@ app.MapGet(
 
         Services =
             health.GetStatus()
+
+
     });
 });
 

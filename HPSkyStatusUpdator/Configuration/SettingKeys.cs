@@ -16,4 +16,5 @@ public static class SettingKeys
     public const string WatchExpirationDays = "WatchExpirationDays";
     public const string WatchCleanupIntervalMinutes = "WatchCleanupIntervalMinutes";
     public const string ItemCacheUpdateMinutes = "ItemCacheUpdateMinutes";
+    public const string DatabaseBackupIntervalMinutes = "DatabaseBackupIntervalMinutes";
 }
