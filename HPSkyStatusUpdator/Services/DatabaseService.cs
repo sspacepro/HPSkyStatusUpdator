@@ -22,7 +22,7 @@ public class DatabaseService
             Path.Combine(dataPath, "hpstatus.db");
 
         _connectionString =
-            $"Data Source={databasePath}";
+            $"Data Source={databasePath};Foreign Keys=True";
 
         using var connection =
             new SqliteConnection(_connectionString);
@@ -34,6 +34,7 @@ public class DatabaseService
         """
         PRAGMA journal_mode=WAL;
         PRAGMA synchronous=NORMAL;
+        PRAGMA foreign_keys=ON;
         """;
         pragmaCommand.ExecuteNonQuery();
 
