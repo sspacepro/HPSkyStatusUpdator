@@ -25,12 +25,17 @@ public class AdminAuthenticationMiddleware
         string? adminKey =
             context.Request.Headers["Admin-Key"]
             .FirstOrDefault();
+        string? configuredKey =
+    Environment.GetEnvironmentVariable("ADMIN_KEY");
+        //string? storedKey =
+        //    settings.GetString(SettingKeys.AdminKey);
 
-        string? storedKey =
-            settings.GetString(SettingKeys.AdminKey);
-
-        if (string.IsNullOrWhiteSpace(storedKey) ||
-            adminKey != storedKey)
+        if (string.IsNullOrWhiteSpace(configuredKey) ||
+            string.IsNullOrWhiteSpace(adminKey) ||
+            !string.Equals(
+                adminKey,
+                configuredKey,
+                StringComparison.Ordinal))
         {
             context.Response.StatusCode = 401;
             await context.Response.WriteAsync("Unauthorized");

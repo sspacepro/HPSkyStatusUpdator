@@ -749,12 +749,7 @@ app.MapPost("/api/admin/settings/{key}",
     SettingsService settings
 ) =>
 {
-    if (key == "AdminKey")
-    {
-        return Results.BadRequest(
-            "Cannot modify AdminKey through API."
-        );
-    }
+
     settings.Set(key, value);
     return Results.Ok();
 });
