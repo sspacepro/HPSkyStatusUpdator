@@ -24,7 +24,7 @@ public class DatabaseService
 
 
         _connectionString =
-            $"Data Source={databasePath}";
+            $"Data Source={databasePath};Foreign Keys=True";
 
 
         using var connection =
@@ -37,6 +37,7 @@ public class DatabaseService
         """
         PRAGMA journal_mode=WAL;
         PRAGMA synchronous=NORMAL;
+        PRAGMA foreign_keys=ON;
         """;
 
         pragmaCommand.ExecuteNonQuery();
