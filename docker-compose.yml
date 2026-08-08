@@ -5,7 +5,8 @@ services:
     container_name: hpstatus
 
     build:
-      context: .
+      context: ./HPSkyStatusUpdator
+      dockerfile: Dockerfile
 
     restart: unless-stopped
 
