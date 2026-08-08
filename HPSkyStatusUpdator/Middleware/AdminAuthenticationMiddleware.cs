@@ -1,4 +1,6 @@
-﻿using HPSkyStatusUpdator.Configuration;
+﻿using System.Security.Cryptography;
+using System.Text;
+using HPSkyStatusUpdator.Configuration;
 using HPSkyStatusUpdator.Services;
 
 namespace HPSkyStatusUpdator.Middleware;
@@ -29,8 +31,9 @@ public class AdminAuthenticationMiddleware
         string? storedKey =
             settings.GetString(SettingKeys.AdminKey);
 
-        if (string.IsNullOrWhiteSpace(storedKey) ||
-            adminKey != storedKey)
+        if (string.IsNullOrWhiteSpace(storedKey)
+            || string.IsNullOrWhiteSpace(adminKey)
+            || !SecureEquals(adminKey, storedKey))
         {
             context.Response.StatusCode = 401;
             await context.Response.WriteAsync("Unauthorized");
@@ -38,5 +41,13 @@ public class AdminAuthenticationMiddleware
         }
 
         await _next(context);
+    }
+
+    // Hash both sides so unequal lengths still compare in fixed time.
+    private static bool SecureEquals(string provided, string expected)
+    {
+        byte[] providedHash = SHA256.HashData(Encoding.UTF8.GetBytes(provided));
+        byte[] expectedHash = SHA256.HashData(Encoding.UTF8.GetBytes(expected));
+        return CryptographicOperations.FixedTimeEquals(providedHash, expectedHash);
     }
 }
