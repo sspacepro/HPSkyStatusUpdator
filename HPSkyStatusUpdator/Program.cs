@@ -13,9 +13,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
-builder.Services.AddHttpClient<HypixelService>();
+// Shared factory so singleton services can hold state without capturing
+// a typed-client transient registration incorrectly.
+builder.Services.AddHttpClient();
+builder.Services.AddHttpClient(nameof(HypixelService));
+builder.Services.AddHttpClient(nameof(AuctionService));
+builder.Services.AddHttpClient(nameof(ItemCacheService));
 
-builder.Services.AddSingleton<HypixelService>();
+builder.Services.AddSingleton<HypixelService>(sp =>
+    new HypixelService(
+        sp.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(HypixelService)),
+        sp.GetRequiredService<SettingsService>(),
+        sp.GetRequiredService<ILogger<HypixelService>>()));
 
 builder.Services.AddHostedService<HypixelUpdater>();
 
@@ -31,32 +41,36 @@ builder.Services.AddSingleton<DatabaseService>();
 
 builder.Services.AddSingleton<SettingsService>();
 
-//builder.Services.AddSingleton<ItemCacheService>();
-
-//builder.Services.AddHostedService<ItemCacheService>();
-
 //builder.Services.AddHostedService<PlayerWatcherService>();
 
 //builder.Services.AddHttpClient<HypixelPlayerService>();
 
 builder.Services.AddSingleton<NotificationService>();
 
-builder.Services.AddHttpClient<AuctionService>();
-
-builder.Services.AddSingleton<AuctionService>();
+builder.Services.AddSingleton<AuctionService>(sp =>
+    new AuctionService(
+        sp.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(AuctionService)),
+        sp.GetRequiredService<ILogger<AuctionService>>()));
 
 //builder.Services.AddHostedService<PlayerWatcherService>();
 
 builder.Services.AddHostedService<AuctionWatcherService>();
 
-builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddSingleton<ServiceHealthService>();
 
-builder.Services.AddSingleton<ItemCacheService>();
+builder.Services.AddSingleton<ItemCacheService>(sp =>
+    new ItemCacheService(
+        sp.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(ItemCacheService)),
+        sp.GetRequiredService<SettingsService>(),
+        sp.GetRequiredService<AuctionService>(),
+        sp.GetRequiredService<DatabaseService>(),
+        sp.GetRequiredService<ServiceHealthService>(),
+        sp.GetRequiredService<ILogger<ItemCacheService>>()));
 
 builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<ItemCacheService>());
-
-builder.Services.AddSingleton<ServiceHealthService>();
 
 builder.Services.AddSingleton<HealthService>();
 builder.Services.AddHostedService<DatabaseBackupService>();
