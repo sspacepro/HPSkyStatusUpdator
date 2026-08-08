@@ -60,11 +60,8 @@ builder.Services.AddSingleton<ServiceHealthService>();
 
 builder.Services.AddSingleton<HealthService>();
 builder.Services.AddHostedService<DatabaseBackupService>();
-builder.Services.Configure<HostOptions>(options =>
-{
-    options.BackgroundServiceExceptionBehavior =
-        BackgroundServiceExceptionBehavior.Ignore;
-});
+// Default is StopHost: if a background service crashes, fail the process
+// instead of leaving the API up with stale auction/watch data.
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -139,14 +136,24 @@ app.MapGet(
     ServiceHealthService health
 ) =>
 {
+    // Only require frequently looping services. ItemCacheService may
+    // intentionally sleep for many hours between updates.
+    bool servicesHealthy = health.AreServicesHealthy(
+        TimeSpan.FromMinutes(10),
+        "AuctionCacheService",
+        "AuctionWatcherService",
+        "HypixelUpdater");
+
     bool healthy =
-     auctions.GetAuctionCount() > 0
-    && items.GetItemCount() > 0;
+        auctions.GetAuctionCount() > 0
+        && items.GetItemCount() > 0
+        && servicesHealthy;
+
     return Results.Ok(new
     {
         Status = healthy
-    ? "Healthy"
-    : "Degraded",
+            ? "Healthy"
+            : "Degraded",
 
         UptimeSeconds =
             (long)(DateTime.UtcNow - serverStartTime)
@@ -167,10 +174,10 @@ app.MapGet(
         QueuedNotifications =
             notifications.GetQueuedNotificationCount(),
 
+        ServicesHealthy = servicesHealthy,
+
         Services =
             health.GetStatus()
-
-
     });
 });
 
