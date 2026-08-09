@@ -5,7 +5,8 @@ services:
     container_name: hpstatus
 
     build:
-      context: .
+      context: ./HPSkyStatusUpdator
+      dockerfile: Dockerfile
 
     restart: unless-stopped
 
@@ -21,7 +22,8 @@ services:
       ASPNETCORE_URLS: http://+:80
 
       DATA_PATH: /app/Data
-
+      HYPIXEL_API_KEY: ${HYPIXEL_API_KEY}
+      ADMIN_KEY: ${ADMIN_KEY}
 
     volumes:
 
