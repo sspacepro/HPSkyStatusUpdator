@@ -73,13 +73,17 @@ builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<ItemCacheService>());
 
 builder.Services.AddSingleton<HealthService>();
-builder.Services.AddHostedService<DatabaseBackupService>();
+
 builder.Services.Configure<HostOptions>(options =>
 {
     options.BackgroundServiceExceptionBehavior =
         BackgroundServiceExceptionBehavior.Ignore;
 });
 
+builder.Services.AddSingleton<DatabaseBackupService>();
+
+builder.Services.AddHostedService(provider =>
+    provider.GetRequiredService<DatabaseBackupService>());
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
@@ -104,6 +108,17 @@ Console.SetOut(new MultiTextWriter(
 ));
 */
 
+app.MapPost(
+    "/api/admin/backup",
+    (DatabaseBackupService backupService) =>
+    {
+        backupService.BackupDatabase();
+
+        return Results.Ok(new
+        {
+            Message = "Database backup created."
+        });
+    });
 app.MapGet(
 "/api/admin/status",
 (

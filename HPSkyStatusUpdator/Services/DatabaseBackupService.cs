@@ -56,7 +56,7 @@ public class DatabaseBackupService : BackgroundService
         }
     }
 
-    private void BackupDatabase()
+    public void BackupDatabase()
     {
         if (!File.Exists(DatabasePath))
         {
