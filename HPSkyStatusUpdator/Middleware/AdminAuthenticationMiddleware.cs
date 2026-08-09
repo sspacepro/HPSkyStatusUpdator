@@ -34,6 +34,17 @@ public class AdminAuthenticationMiddleware
         if (string.IsNullOrWhiteSpace(storedKey)
             || string.IsNullOrWhiteSpace(adminKey)
             || !SecureEquals(adminKey, storedKey))
+        string? configuredKey =
+    Environment.GetEnvironmentVariable("ADMIN_KEY");
+        //string? storedKey =
+        //    settings.GetString(SettingKeys.AdminKey);
+
+        if (string.IsNullOrWhiteSpace(configuredKey) ||
+            string.IsNullOrWhiteSpace(adminKey) ||
+            !string.Equals(
+                adminKey,
+                configuredKey,
+                StringComparison.Ordinal))
         {
             context.Response.StatusCode = 401;
             await context.Response.WriteAsync("Unauthorized");

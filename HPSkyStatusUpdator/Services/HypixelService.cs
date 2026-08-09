@@ -29,9 +29,8 @@ public class HypixelService
     {
         try
         {
-            string? apiKey = _settings.GetString(
-                SettingKeys.HypixelApiKey
-            );
+            string? apiKey =
+                Environment.GetEnvironmentVariable("HYPIXEL_API_KEY");
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
