@@ -73,7 +73,7 @@ builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<ItemCacheService>());
 
 builder.Services.AddSingleton<HealthService>();
-builder.Services.AddHostedService<DatabaseBackupService>();
+//builder.Services.AddHostedService<DatabaseBackupService>();
 // Default is StopHost: if a background service crashes, fail the process
 // instead of leaving the API up with stale auction/watch data.
 
