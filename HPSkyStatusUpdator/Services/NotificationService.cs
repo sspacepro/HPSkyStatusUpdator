@@ -37,4 +37,19 @@ public class NotificationService
     {
         return _queues.Values.Sum(queue => queue.Count);
     }
+    public void AddAdminNotification(
+    string clientId,
+    string title,
+    string message)
+    {
+        Add(
+            clientId,
+            new Models.Notification
+            {
+                ClientId = clientId,
+                Type = "ADMIN",
+                Title = title,
+                Message = message
+            });
+    }
 }

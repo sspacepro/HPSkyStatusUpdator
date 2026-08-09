@@ -110,7 +110,53 @@ Console.SetOut(new MultiTextWriter(
     logFile
 ));
 */
+app.MapPost(
+    "/api/admin/notifications",
+    (
+        AdminNotificationRequest request,
+        NotificationService notifications,
+        UserService users
+    ) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+            return Results.BadRequest(
+                "Title is required.");
 
+        if (string.IsNullOrWhiteSpace(request.Message))
+            return Results.BadRequest(
+                "Message is required.");
+
+        List<string> recipients;
+
+        if (request.ClientIds == null ||
+            request.ClientIds.Count == 0)
+        {
+            recipients = users.GetAllUsers()
+                .Where(u => !u.Blocked)
+                .Select(u => u.ClientId)
+                .ToList();
+        }
+        else
+        {
+            recipients = request.ClientIds
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        foreach (string clientId in recipients)
+        {
+            notifications.AddAdminNotification(
+                clientId,
+                request.Title,
+                request.Message);
+        }
+
+        return Results.Ok(new
+        {
+            Type = "ADMIN",
+            Recipients = recipients.Count
+        });
+    });
 app.MapPost(
     "/api/admin/backup",
     (DatabaseBackupService backupService) =>
