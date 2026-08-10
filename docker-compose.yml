@@ -13,13 +13,14 @@ services:
 
     ports:
       - "5122:80"
+      - "5123:81"
 
 
     environment:
 
       ASPNETCORE_ENVIRONMENT: Production
 
-      ASPNETCORE_URLS: http://+:80
+      ASPNETCORE_URLS: http://+:80;http://+:81
 
       DATA_PATH: /app/Data
       HYPIXEL_API_KEY: ${HYPIXEL_API_KEY}

@@ -14,11 +14,20 @@ public class AdminAuthenticationMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Only protect admin endpoints.
-        // /api/v1/health is therefore unaffected.
-        if (!context.Request.Path.StartsWithSegments("/api/admin"))
+        bool isAdminEndpoint =
+            context.Request.Path.StartsWithSegments("/api/admin");
+
+        if (!isAdminEndpoint)
         {
             await _next(context);
+            return;
+        }
+
+        // Admin endpoints are only available on port 81.
+        if (context.Connection.LocalPort != 81)
+        {
+            context.Response.StatusCode = 404;
+            await context.Response.WriteAsync("Not Found");
             return;
         }
 
@@ -26,7 +35,6 @@ public class AdminAuthenticationMiddleware
             context.Request.Headers["Admin-Key"]
                 .FirstOrDefault();
 
-        // Admin key comes from the environment (.env / Docker Compose)
         string? configuredKey =
             Environment.GetEnvironmentVariable("ADMIN_KEY");
 
