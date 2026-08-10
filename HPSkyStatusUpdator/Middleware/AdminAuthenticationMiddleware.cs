@@ -23,8 +23,8 @@ public class AdminAuthenticationMiddleware
             return;
         }
 
-        // Admin endpoints are only available on port 81.
-        if (context.Connection.LocalPort != 81)
+        // Admin endpoints are only available on port 5123.
+        if (context.Connection.LocalPort != 5123)
         {
             context.Response.StatusCode = 404;
             await context.Response.WriteAsync("Not Found");
