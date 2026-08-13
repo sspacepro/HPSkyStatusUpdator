@@ -110,6 +110,8 @@ Console.SetOut(new MultiTextWriter(
     logFile
 ));
 */
+
+
 app.MapPost(
     "/api/admin/notifications",
     (
