@@ -84,7 +84,7 @@ builder.Services.Configure<HostOptions>(options =>
 });
 
 builder.Services.AddSingleton<DatabaseBackupService>();
-
+builder.Services.AddSingleton<HealthRateLimitService>();
 builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<DatabaseBackupService>());
 var app = builder.Build();
@@ -212,6 +212,8 @@ app.MapGet(
 app.MapGet(
 "/api/v1/health",
 (
+    HttpContext context,
+    HealthRateLimitService healthLimits,
     HypixelService hypixel,
     AuctionService auctions,
     ItemCacheService items,
@@ -219,6 +221,14 @@ app.MapGet(
     ServiceHealthService health
 ) =>
 {
+    string ip =
+        context.Connection.RemoteIpAddress?.ToString()
+        ?? "unknown";
+
+    if (!healthLimits.Allow(ip))
+    {
+        return Results.StatusCode(429);
+    }
     // Only require frequently looping services. ItemCacheService may
     // intentionally sleep for many hours between updates.
     bool servicesHealthy = health.AreServicesHealthy(
