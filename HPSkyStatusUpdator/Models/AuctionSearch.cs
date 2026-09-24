@@ -13,20 +13,14 @@ public class AuctionSearch
             return false;
 
         return ItemTag == other.ItemTag
-            && Tier == other.Tier
-            && Stars == other.Stars
-            && Recombobulated == other.Recombobulated
-            && PetXp == other.PetXp;
+            && Tier == other.Tier;
     }
 
     public override int GetHashCode()
     {
         return HashCode.Combine(
             ItemTag,
-            Tier,
-            Stars,
-            Recombobulated,
-            PetXp
+            Tier
         );
     }
 }
