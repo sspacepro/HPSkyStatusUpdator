@@ -141,6 +141,12 @@ public class DatabaseService
             Tier TEXT,
             CanRecombobulate INTEGER
         );
+        CREATE TABLE IF NOT EXISTS Blacklist
+        (
+            ItemTag TEXT NOT NULL PRIMARY KEY,
+            Reason TEXT,
+            AddedAt TEXT NOT NULL
+        );
         """;
         command.ExecuteNonQuery();
     }

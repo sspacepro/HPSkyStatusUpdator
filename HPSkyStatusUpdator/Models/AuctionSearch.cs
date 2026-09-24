@@ -6,11 +6,6 @@ public class AuctionSearch
 
     public string? Tier { get; set; }
 
-    public int? Stars { get; set; }
-
-    public bool? Recombobulated { get; set; }
-
-    public long? PetXp { get; set; }
 
     public override bool Equals(object? obj)
     {
