@@ -9,15 +9,13 @@ using System.IO;
 DateTime serverStartTime = DateTime.UtcNow;
 var builder = WebApplication.CreateBuilder(args);
 
-
-builder.Logging.ClearProviders();
+//builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 // Shared factory so singleton services can hold state without capturing
 // a typed-client transient registration incorrectly.
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient(nameof(HypixelService));
-builder.Services.AddHttpClient(nameof(AuctionService));
 builder.Services.AddHttpClient(nameof(ItemCacheService));
 
 builder.Services.AddSingleton<HypixelService>(sp =>
@@ -29,7 +27,6 @@ builder.Services.AddSingleton<HypixelService>(sp =>
 
 builder.Services.AddHostedService<HypixelUpdater>();
 
-builder.Services.AddHostedService<AuctionCacheService>();
 
 builder.Services.AddSingleton<RegistrationService>();
 
@@ -47,11 +44,7 @@ builder.Services.AddSingleton<SettingsService>();
 
 builder.Services.AddSingleton<NotificationService>();
 
-builder.Services.AddSingleton<AuctionService>(sp =>
-    new AuctionService(
-        sp.GetRequiredService<IHttpClientFactory>()
-            .CreateClient(nameof(AuctionService)),
-        sp.GetRequiredService<ILogger<AuctionService>>()));
+
 
 //builder.Services.AddHostedService<PlayerWatcherService>();
 
@@ -87,11 +80,37 @@ builder.Services.AddSingleton<DatabaseBackupService>();
 builder.Services.AddSingleton<HealthRateLimitService>();
 builder.Services.AddHostedService(provider =>
     provider.GetRequiredService<DatabaseBackupService>());
+builder.Services.AddSingleton<MarketDatabaseService>();
+builder.Services.AddSingleton<BlacklistService>();
+builder.Services.AddSingleton<BazaarPriceService>(sp =>
+    new BazaarPriceService(
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(BazaarPriceService)),
+        sp.GetRequiredService<MarketDatabaseService>(),
+        sp.GetRequiredService<SettingsService>(),
+        sp.GetRequiredService<ServiceHealthService>(),
+        sp.GetRequiredService<ILogger<BazaarPriceService>>()));
+builder.Services.AddHostedService(sp => sp.GetRequiredService<BazaarPriceService>());
+
+builder.Services.AddSingleton<ComponentValueCalculator>();
+builder.Services.AddSingleton<OutlierDetector>();
+builder.Services.AddSingleton<AuctionService>();
+
+builder.Services.AddHttpClient(nameof(AuctionIngestService));
+builder.Services.AddHostedService<AuctionIngestService>();
+
+builder.Services.AddHttpClient(nameof(AuctionEndedReconciliationService));
+builder.Services.AddHostedService<AuctionEndedReconciliationService>();
+
+builder.Services.AddHttpClient(nameof(AuctionFullSweepService));
+builder.Services.AddHostedService<AuctionFullSweepService>();
+
+builder.Services.AddHostedService<SaleHistoryAggregationService>();
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     _ = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 }
+
 
 var hypixel = app.Services.GetRequiredService<HypixelService>();
 app.UseMiddleware<RequestLoggingMiddleware>();
@@ -111,6 +130,60 @@ Console.SetOut(new MultiTextWriter(
 ));
 */
 
+app.MapPost("/api/admin/settings/bazaar-refresh-minutes/{minutes}",
+(int minutes, SettingsService settings) =>
+{
+    settings.SetInt(SettingKeys.BazaarRefreshMinutes, minutes);
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/bazaar-refresh-minutes",
+(SettingsService settings) =>
+    Results.Ok(settings.GetInt(SettingKeys.BazaarRefreshMinutes, 60)));
+
+app.MapPost("/api/admin/settings/auction-ingest-interval-seconds/{seconds}",
+(int seconds, SettingsService settings) =>
+{
+    settings.SetInt(SettingKeys.AuctionIngestIntervalSeconds, seconds);
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/auction-ingest-interval-seconds",
+(SettingsService settings) =>
+    Results.Ok(settings.GetInt(SettingKeys.AuctionIngestIntervalSeconds, 60)));
+
+app.MapPost("/api/admin/settings/full-sweep-interval-minutes/{minutes}",
+(int minutes, SettingsService settings) =>
+{
+    settings.SetInt(SettingKeys.FullSweepIntervalMinutes, minutes);
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/full-sweep-interval-minutes",
+(SettingsService settings) =>
+    Results.Ok(settings.GetInt(SettingKeys.FullSweepIntervalMinutes, 60)));
+
+app.MapPost("/api/admin/settings/aggregation-interval-hours/{hours}",
+(int hours, SettingsService settings) =>
+{
+    settings.SetInt(SettingKeys.AggregationIntervalHours, hours);
+    return Results.Ok();
+});
+
+app.MapGet("/api/admin/settings/aggregation-interval-hours",
+(SettingsService settings) =>
+    Results.Ok(settings.GetInt(SettingKeys.AggregationIntervalHours, 6)));
+app.MapGet("/api/admin/blacklist", (BlacklistService blacklist) =>
+    Results.Ok(blacklist.GetAll()));
+
+app.MapPost("/api/admin/blacklist/{itemTag}", (string itemTag, string? reason, BlacklistService blacklist) =>
+{
+    blacklist.Add(itemTag, reason);
+    return Results.Ok();
+});
+
+app.MapDelete("/api/admin/blacklist/{itemTag}", (string itemTag, BlacklistService blacklist) =>
+    blacklist.Remove(itemTag) ? Results.Ok() : Results.NotFound());
 
 app.MapPost(
     "/api/admin/notifications",

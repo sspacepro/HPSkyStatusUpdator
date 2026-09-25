@@ -1,4 +1,4 @@
-﻿namespace HPSkyStatusUpdator.Models;
+namespace HPSkyStatusUpdator.Models;
 
 public class DecodedAuction
 {
@@ -12,8 +12,15 @@ public class DecodedAuction
 
     public long Price { get; set; }
 
+    public long Start { get; set; }
+
+    public long End { get; set; }
 
     public string DisplayItemName { get; set; } = "";
 
     public string ItemLore { get; set; } = "";
+
+    public ItemAttributes Attributes { get; set; } = new();
+
+    public ItemExtras Extras { get; set; } = new();
 }

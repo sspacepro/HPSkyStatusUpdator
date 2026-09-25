@@ -189,17 +189,16 @@ public class AuctionIngestService : BackgroundService
             INSERT INTO Auctions
             (
                 Uuid, ItemTag, Tier, Price, DisplayItemName, ItemLore,
-                Attributes, Extras, StartTime, EndTime, LastSeenAt, State
+                Attributes, Extras, StartTime, EndTime, LastSeenAt
             )
             VALUES
             (
                 $uuid, $itemTag, $tier, $price, $displayName, $lore,
-                $attributes, $extras, $start, $end, $lastSeen, 'ACTIVE'
+                $attributes, $extras, $start, $end, $lastSeen
             )
             ON CONFLICT(Uuid) DO UPDATE SET
                 Price = excluded.Price,
-                LastSeenAt = excluded.LastSeenAt,
-                State = 'ACTIVE';
+                LastSeenAt = excluded.LastSeenAt;
             """;
 
             command.Parameters.AddWithValue("$uuid", auction.Uuid);

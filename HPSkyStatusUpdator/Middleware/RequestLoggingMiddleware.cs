@@ -25,8 +25,8 @@ public class RequestLoggingMiddleware
             (DateTime.UtcNow - start).TotalMilliseconds;
 
         // Don't log successful requests.
-        if (context.Response.StatusCode < 400)
-            return;
+        //if (context.Response.StatusCode < 400)
+        //    return;
 
         var user = context.Items["User"] as User;
 

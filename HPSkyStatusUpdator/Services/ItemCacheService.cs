@@ -17,7 +17,6 @@ public class ItemCacheService : BackgroundService
     private readonly ServiceHealthService _health;
     private readonly ILogger<ItemCacheService> _logger;
 
-
     private volatile List<HypixelItem> _items = new();
 
     public ItemCacheService(
@@ -35,8 +34,6 @@ public class ItemCacheService : BackgroundService
         _health = health;
         _logger = logger;
     }
-
-
 
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
@@ -75,8 +72,9 @@ public class ItemCacheService : BackgroundService
     {
         try
         {
-            // Make a stable snapshot because AuctionService may replace
-            // its cache while this method is running.
+            // Make a stable snapshot — GetAllAuctions() runs its own
+            // query against market.db each call, so this just fixes the
+            // set we're working from for the rest of this method.
             DecodedAuction[] auctionSnapshot =
                 _auctions.GetAllAuctions().ToArray();
 
@@ -250,6 +248,7 @@ public class ItemCacheService : BackgroundService
     {
         return _database.GetKnownAuctionItems();
     }
+
     public int GetItemCount()
     {
         return _items.Count;

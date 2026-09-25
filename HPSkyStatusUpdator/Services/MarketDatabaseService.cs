@@ -54,12 +54,11 @@ public class MarketDatabaseService
             Extras TEXT NOT NULL DEFAULT '{}',
             StartTime INTEGER NOT NULL,
             EndTime INTEGER NOT NULL,
-            LastSeenAt INTEGER NOT NULL,
-            State TEXT NOT NULL DEFAULT 'ACTIVE'
+            LastSeenAt INTEGER NOT NULL
         );
 
         CREATE INDEX IF NOT EXISTS IX_Auctions_ItemTag_State_Price
-            ON Auctions(ItemTag, State, Price);
+            ON Auctions(ItemTag, Price);
 
         -- Sale history is kept forever (per your call). Rows are small
         -- (scalars + one computed ComponentValue float instead of the

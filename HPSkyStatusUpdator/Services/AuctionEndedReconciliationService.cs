@@ -106,8 +106,7 @@ public class AuctionEndedReconciliationService : BackgroundService
         string uuid)
     {
         var command = connection.CreateCommand();
-        command.CommandText =
-            "SELECT ItemTag, Tier, Attributes FROM Auctions WHERE Uuid = $uuid AND State = 'ACTIVE';";
+        command.CommandText = "SELECT ItemTag, Tier, Attributes FROM Auctions WHERE Uuid = $uuid;";
         command.Parameters.AddWithValue("$uuid", uuid);
 
         using var reader = command.ExecuteReader();
@@ -171,7 +170,7 @@ public class AuctionEndedReconciliationService : BackgroundService
     private static void MarkSold(SqliteConnection connection, string uuid)
     {
         var command = connection.CreateCommand();
-        command.CommandText = "UPDATE Auctions SET State = 'SOLD' WHERE Uuid = $uuid;";
+        command.CommandText = "DELETE FROM Auctions WHERE Uuid = $uuid;";
         command.Parameters.AddWithValue("$uuid", uuid);
         command.ExecuteNonQuery();
     }

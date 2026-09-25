@@ -17,4 +17,10 @@ public static class SettingKeys
     public const string DatabaseBackupIntervalMinutes = "DatabaseBackupIntervalMinutes";
 
     public const string BazaarRefreshMinutes = "BazaarRefreshMinutes";
+
+    public const string FullSweepIntervalMinutes = "FullSweepIntervalMinutes";
+
+    public const string AggregationIntervalHours = "AggregationIntervalHours";
+
+    public const string AuctionIngestIntervalSeconds = "AuctionIngestIntervalSeconds";
 }
