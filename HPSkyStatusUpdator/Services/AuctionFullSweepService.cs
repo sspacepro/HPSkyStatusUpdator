@@ -119,6 +119,35 @@ public class AuctionFullSweepService : BackgroundService
             "Full sweep complete: {Upserted} upserted, {Expired} marked expired.",
             toUpsert.Count,
             expired);
+
+        WriteDebugLine(toUpsert.Count, expired, seenUuids.Count);
+    }
+
+    // Temporary — appends one line per sweep to a plain text file so you
+    // can eyeball cleanup counts without digging through console logs.
+    // Safe to delete this method (and its call site above) once you
+    // don't need it anymore.
+    private static void WriteDebugLine(int upserted, int expired, int stillActive)
+    {
+        try
+        {
+            var dataPath =
+                Environment.GetEnvironmentVariable("DATA_PATH")
+                ?? Path.Combine(AppContext.BaseDirectory, "Data");
+
+            string debugFile = Path.Combine(dataPath, "sweep-debug.txt");
+
+            string line =
+                $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC | " +
+                $"upserted={upserted} | expired={expired} | stillActive={stillActive}";
+
+            File.AppendAllText(debugFile, line + Environment.NewLine);
+        }
+        catch
+        {
+            // Debug-only convenience — never let a logging failure take
+            // down the sweep itself.
+        }
     }
 
     private void ProcessPage(
@@ -220,16 +249,17 @@ public class AuctionFullSweepService : BackgroundService
             INSERT INTO Auctions
             (
                 Uuid, ItemTag, Tier, Price, DisplayItemName, ItemLore,
-                Attributes, Extras, StartTime, EndTime, LastSeenAt
+                Attributes, Extras, StartTime, EndTime, LastSeenAt, State
             )
             VALUES
             (
                 $uuid, $itemTag, $tier, $price, $displayName, $lore,
-                $attributes, $extras, $start, $end, $lastSeen
+                $attributes, $extras, $start, $end, $lastSeen, 'ACTIVE'
             )
             ON CONFLICT(Uuid) DO UPDATE SET
                 Price = excluded.Price,
-                LastSeenAt = excluded.LastSeenAt;
+                LastSeenAt = excluded.LastSeenAt,
+                State = 'ACTIVE';
             """;
 
             command.Parameters.AddWithValue("$uuid", auction.Uuid);
@@ -256,7 +286,7 @@ public class AuctionFullSweepService : BackgroundService
         connection.Open();
 
         var selectCommand = connection.CreateCommand();
-        selectCommand.CommandText = "SELECT Uuid FROM Auctions;";
+        selectCommand.CommandText = "SELECT Uuid FROM Auctions WHERE State = 'ACTIVE';";
 
         var toExpire = new List<string>();
 
@@ -280,7 +310,7 @@ public class AuctionFullSweepService : BackgroundService
         {
             var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "DELETE FROM Auctions WHERE Uuid = $uuid;";
+            command.CommandText = "UPDATE Auctions SET State = 'EXPIRED' WHERE Uuid = $uuid;";
             command.Parameters.AddWithValue("$uuid", uuid);
             command.ExecuteNonQuery();
         }
