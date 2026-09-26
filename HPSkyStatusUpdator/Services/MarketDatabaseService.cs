@@ -57,7 +57,7 @@ public class MarketDatabaseService
             LastSeenAt INTEGER NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS IX_Auctions_ItemTag_State_Price
+        CREATE INDEX IF NOT EXISTS IX_Auctions_ItemTag_Price
             ON Auctions(ItemTag, Price);
 
         -- Sale history is kept forever (per your call). Rows are small

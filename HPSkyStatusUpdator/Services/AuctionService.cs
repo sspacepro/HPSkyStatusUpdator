@@ -52,7 +52,13 @@ public class AuctionService
 
         command.Parameters.AddWithValue("$itemTag", search.ItemTag);
         command.Parameters.AddWithValue("$tier", (object?)search.Tier ?? DBNull.Value);
-
+        command.Parameters.AddWithValue("$stars", (object?)search.Stars ?? DBNull.Value);
+        command.Parameters.AddWithValue(
+            "$recomb",
+            search.Recombobulated.HasValue
+                ? (search.Recombobulated.Value ? 1 : 0)
+                : (object)DBNull.Value);
+        command.Parameters.AddWithValue("$petXp", (object?)search.PetXp ?? DBNull.Value);
 
         using var reader = command.ExecuteReader();
 
@@ -69,7 +75,7 @@ public class AuctionService
         """
         SELECT Uuid, ItemTag, Tier, Price, DisplayItemName, ItemLore,
                Attributes, Extras, StartTime, EndTime
-        FROM Auctions
+        FROM Auctions;
         """;
 
         using var reader = command.ExecuteReader();

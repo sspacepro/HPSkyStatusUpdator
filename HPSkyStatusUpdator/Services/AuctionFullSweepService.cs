@@ -249,17 +249,16 @@ public class AuctionFullSweepService : BackgroundService
             INSERT INTO Auctions
             (
                 Uuid, ItemTag, Tier, Price, DisplayItemName, ItemLore,
-                Attributes, Extras, StartTime, EndTime, LastSeenAt, State
+                Attributes, Extras, StartTime, EndTime, LastSeenAt
             )
             VALUES
             (
                 $uuid, $itemTag, $tier, $price, $displayName, $lore,
-                $attributes, $extras, $start, $end, $lastSeen, 'ACTIVE'
+                $attributes, $extras, $start, $end, $lastSeen
             )
             ON CONFLICT(Uuid) DO UPDATE SET
                 Price = excluded.Price,
-                LastSeenAt = excluded.LastSeenAt,
-                State = 'ACTIVE';
+                LastSeenAt = excluded.LastSeenAt;
             """;
 
             command.Parameters.AddWithValue("$uuid", auction.Uuid);
@@ -286,7 +285,7 @@ public class AuctionFullSweepService : BackgroundService
         connection.Open();
 
         var selectCommand = connection.CreateCommand();
-        selectCommand.CommandText = "SELECT Uuid FROM Auctions WHERE State = 'ACTIVE';";
+        selectCommand.CommandText = "SELECT Uuid FROM Auctions;";
 
         var toExpire = new List<string>();
 
@@ -310,7 +309,7 @@ public class AuctionFullSweepService : BackgroundService
         {
             var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "UPDATE Auctions SET State = 'EXPIRED' WHERE Uuid = $uuid;";
+            command.CommandText = "DELETE FROM Auctions WHERE Uuid = $uuid;";
             command.Parameters.AddWithValue("$uuid", uuid);
             command.ExecuteNonQuery();
         }
