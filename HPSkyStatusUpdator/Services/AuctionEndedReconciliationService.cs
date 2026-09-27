@@ -134,7 +134,7 @@ public class AuctionEndedReconciliationService : BackgroundService
 
         // Component value first — the outlier check needs it to judge
         // the *unexplained* part of the price, not the raw total.
-        double? componentValue = _valueCalculator.Calculate(existing.ItemTag, attributes);
+        double? componentValue = _valueCalculator.Calculate(connection, existing.ItemTag, attributes);
 
         bool isOutlier = _outliers.IsOutlier(connection, existing.ItemTag, price, componentValue);
 

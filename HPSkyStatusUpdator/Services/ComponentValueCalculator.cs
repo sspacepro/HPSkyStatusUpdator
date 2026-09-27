@@ -11,7 +11,6 @@ namespace HPSkyStatusUpdator.Services;
 public class ComponentValueCalculator
 {
     private readonly BazaarPriceService _bazaar;
-    private readonly MarketDatabaseService _market;
     private readonly ILogger<ComponentValueCalculator> _logger;
 
     private const string RecombobulatorProduct = "RECOMBOBULATOR_3000";
@@ -31,15 +30,13 @@ public class ComponentValueCalculator
 
     public ComponentValueCalculator(
         BazaarPriceService bazaar,
-        MarketDatabaseService market,
         ILogger<ComponentValueCalculator> logger)
     {
         _bazaar = bazaar;
-        _market = market;
         _logger = logger;
     }
 
-    public double? Calculate(string itemTag, ItemAttributes attributes)
+    public double? Calculate(SqliteConnection connection, string itemTag, ItemAttributes attributes)
     {
         double total = 0;
         bool foundAny = false;
@@ -104,7 +101,7 @@ public class ComponentValueCalculator
 
         if (attributes.Stars is > 0)
         {
-            var starCost = CalculateStarCost(itemTag, attributes.Stars.Value, breakdown);
+            var starCost = CalculateStarCost(connection, itemTag, attributes.Stars.Value, breakdown);
 
             if (starCost.HasValue)
             {
@@ -177,7 +174,7 @@ public class ComponentValueCalculator
     // that item's essence type. Stars 6-10 ("master stars"): each one is
     // a specific dungeon-drop item that only trades on the AH — priced
     // from our own recent SaleHistory instead of the bazaar.
-    private double? CalculateStarCost(string itemTag, int stars, List<string> breakdown)
+    private double? CalculateStarCost(SqliteConnection connection, string itemTag, int stars, List<string> breakdown)
     {
         double total = 0;
         bool foundAny = false;
@@ -229,7 +226,7 @@ public class ComponentValueCalculator
         for (int i = 0; i < masterStars && i < StarUpgradeCosts.MasterStarTags.Length; i++)
         {
             string masterStarTag = StarUpgradeCosts.MasterStarTags[i];
-            var price = GetRecentAhMedian(masterStarTag);
+            var price = GetRecentAhMedian(connection, masterStarTag);
 
             if (price.HasValue)
             {
@@ -249,11 +246,8 @@ public class ComponentValueCalculator
     // Median of the last 10 non-outlier sales of a given item tag from
     // our own SaleHistory. Used for master star items, which are AH-only
     // and so have no bazaar price to fall back on.
-    private double? GetRecentAhMedian(string itemTag)
+    private static double? GetRecentAhMedian(SqliteConnection connection, string itemTag)
     {
-        using var connection = _market.GetConnection();
-        connection.Open();
-
         var command = connection.CreateCommand();
         command.CommandText =
         """

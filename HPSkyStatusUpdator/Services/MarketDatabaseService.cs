@@ -19,7 +19,7 @@ public class MarketDatabaseService
 
         var databasePath = Path.Combine(dataPath, "market.db");
 
-        _connectionString = $"Data Source={databasePath}";
+        _connectionString = $"Data Source={databasePath};Default Timeout=30";
 
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
