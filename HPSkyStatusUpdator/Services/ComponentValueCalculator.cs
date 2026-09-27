@@ -17,7 +17,6 @@ public class ComponentValueCalculator
     private const string RecombobulatorProduct = "RECOMBOBULATOR_3000";
     private const string HotPotatoBookProduct = "HOT_POTATO_BOOK";
     private const string FumingPotatoBookProduct = "FUMING_POTATO_BOOK";
-    private const string EssenceWitherProduct = "ESSENCE_WITHER";
 
     private static readonly string[] NamedGemTypes =
     {
@@ -45,6 +44,13 @@ public class ComponentValueCalculator
         double total = 0;
         bool foundAny = false;
 
+        // Temporary — every contribution (or reason it was skipped) gets
+        // one line here, written out to a debug file at the end. Safe to
+        // rip this whole thing out (this list, every Breakdown(...) call,
+        // and the WriteDebugBreakdown method/call) once you don't need
+        // it anymore.
+        var breakdown = new List<string>();
+
         if (attributes.Recombobulated)
         {
             var price = _bazaar.GetBuyPrice(RecombobulatorProduct);
@@ -53,6 +59,11 @@ public class ComponentValueCalculator
             {
                 total += price.Value;
                 foundAny = true;
+                breakdown.Add($"Recombobulator: +{price.Value:N0}");
+            }
+            else
+            {
+                breakdown.Add("Recombobulator: SKIPPED (no bazaar price for RECOMBOBULATOR_3000)");
             }
         }
 
@@ -64,8 +75,14 @@ public class ComponentValueCalculator
             var hotPrice = _bazaar.GetBuyPrice(HotPotatoBookProduct);
             if (hotPrice.HasValue)
             {
-                total += hotPotatoBooks * hotPrice.Value;
+                double hotTotal = hotPotatoBooks * hotPrice.Value;
+                total += hotTotal;
                 foundAny = true;
+                breakdown.Add($"Hot Potato Books x{hotPotatoBooks}: +{hotTotal:N0}");
+            }
+            else
+            {
+                breakdown.Add($"Hot Potato Books x{hotPotatoBooks}: SKIPPED (no bazaar price for HOT_POTATO_BOOK)");
             }
 
             if (fumingPotatoBooks > 0)
@@ -73,15 +90,21 @@ public class ComponentValueCalculator
                 var fumingPrice = _bazaar.GetBuyPrice(FumingPotatoBookProduct);
                 if (fumingPrice.HasValue)
                 {
-                    total += fumingPotatoBooks * fumingPrice.Value;
+                    double fumingTotal = fumingPotatoBooks * fumingPrice.Value;
+                    total += fumingTotal;
                     foundAny = true;
+                    breakdown.Add($"Fuming Potato Books x{fumingPotatoBooks}: +{fumingTotal:N0}");
+                }
+                else
+                {
+                    breakdown.Add($"Fuming Potato Books x{fumingPotatoBooks}: SKIPPED (no bazaar price for FUMING_POTATO_BOOK)");
                 }
             }
         }
 
         if (attributes.Stars is > 0)
         {
-            var starCost = CalculateStarCost(itemTag, attributes.Stars.Value);
+            var starCost = CalculateStarCost(itemTag, attributes.Stars.Value, breakdown);
 
             if (starCost.HasValue)
             {
@@ -90,12 +113,20 @@ public class ComponentValueCalculator
             }
         }
 
+        if (attributes.Gems.Count == 0)
+        {
+            breakdown.Add("Gems: none socketed");
+        }
+
         foreach (var (slot, quality) in attributes.Gems)
         {
             string? productId = MapGemToProduct(slot, quality);
 
             if (productId == null)
-                continue; // category slot — see MapGemToProduct
+            {
+                breakdown.Add($"Gem {slot}={quality}: SKIPPED (category slot, gem type unknown — see MapGemToProduct)");
+                continue;
+            }
 
             var price = _bazaar.GetBuyPrice(productId);
 
@@ -103,7 +134,17 @@ public class ComponentValueCalculator
             {
                 total += price.Value;
                 foundAny = true;
+                breakdown.Add($"Gem {slot}={quality} ({productId}): +{price.Value:N0}");
             }
+            else
+            {
+                breakdown.Add($"Gem {slot}={quality} ({productId}): SKIPPED (no bazaar price)");
+            }
+        }
+
+        if (attributes.Enchantments.Count == 0)
+        {
+            breakdown.Add("Enchants: none");
         }
 
         foreach (var (enchant, level) in attributes.Enchantments)
@@ -116,19 +157,27 @@ public class ComponentValueCalculator
             {
                 total += price.Value;
                 foundAny = true;
+                breakdown.Add($"Enchant {enchant} {level} ({productId}): +{price.Value:N0}");
             }
-            // No price found (not bazaar-tradeable at this level) —
-            // skipped silently, as agreed.
+            else
+            {
+                // No price found (not bazaar-tradeable at this level) —
+                // skipped silently in the actual total, as agreed. Still
+                // shows up in the debug breakdown so it's visible.
+                breakdown.Add($"Enchant {enchant} {level} ({productId}): SKIPPED (no bazaar price)");
+            }
         }
+
+        WriteDebugBreakdown(itemTag, breakdown, foundAny ? total : (double?)null);
 
         return foundAny ? total : null;
     }
 
-    // Stars 1-5: per-item essence amount x current ESSENCE_WITHER price.
-    // Stars 6-10 ("master stars"): each one is a specific dungeon-drop
-    // item that only trades on the AH — priced from our own recent
-    // SaleHistory instead of the bazaar.
-    private double? CalculateStarCost(string itemTag, int stars)
+    // Stars 1-5: per-item essence amount x current essence price for
+    // that item's essence type. Stars 6-10 ("master stars"): each one is
+    // a specific dungeon-drop item that only trades on the AH — priced
+    // from our own recent SaleHistory instead of the bazaar.
+    private double? CalculateStarCost(string itemTag, int stars, List<string> breakdown)
     {
         double total = 0;
         bool foundAny = false;
@@ -137,28 +186,41 @@ public class ComponentValueCalculator
 
         if (essenceStars > 0)
         {
-            if (StarUpgradeCosts.EssenceCostsByItem.TryGetValue(
+            if (StarUpgradeCosts.CostsByItem.TryGetValue(
                 itemTag.ToUpperInvariant(),
-                out int[]? costs))
+                out StarUpgradeCosts.StarCost? starCost))
             {
-                var essencePrice = _bazaar.GetBuyPrice(EssenceWitherProduct);
+                var essencePrice = _bazaar.GetBuyPrice(starCost.EssenceProductId);
 
                 if (essencePrice.HasValue)
                 {
                     int essenceUnits = 0;
 
                     for (int i = 0; i < essenceStars; i++)
-                        essenceUnits += costs[i];
+                        essenceUnits += starCost.Costs[i];
 
-                    total += essenceUnits * essencePrice.Value;
+                    double essenceTotal = essenceUnits * essencePrice.Value;
+                    total += essenceTotal;
                     foundAny = true;
+                    breakdown.Add(
+                        $"Stars 1-{essenceStars} ({starCost.EssenceProductId} x{essenceUnits}): +{essenceTotal:N0}");
+                }
+                else
+                {
+                    breakdown.Add(
+                        $"Stars 1-{essenceStars}: SKIPPED (no bazaar price for {starCost.EssenceProductId})");
                 }
             }
-            else if (_warnedMissingStarCost.Add(itemTag))
+            else
             {
-                _logger.LogWarning(
-                    "No star essence cost entry for {ItemTag} — star value will be undercounted for this item.",
-                    itemTag);
+                breakdown.Add($"Stars 1-{essenceStars}: SKIPPED (no cost table entry for {itemTag})");
+
+                if (_warnedMissingStarCost.Add(itemTag))
+                {
+                    _logger.LogWarning(
+                        "No star essence cost entry for {ItemTag} — star value will be undercounted for this item.",
+                        itemTag);
+                }
             }
         }
 
@@ -166,12 +228,18 @@ public class ComponentValueCalculator
 
         for (int i = 0; i < masterStars && i < StarUpgradeCosts.MasterStarTags.Length; i++)
         {
-            var price = GetRecentAhMedian(StarUpgradeCosts.MasterStarTags[i]);
+            string masterStarTag = StarUpgradeCosts.MasterStarTags[i];
+            var price = GetRecentAhMedian(masterStarTag);
 
             if (price.HasValue)
             {
                 total += price.Value;
                 foundAny = true;
+                breakdown.Add($"Master star {i + 1} ({masterStarTag}): +{price.Value:N0}");
+            }
+            else
+            {
+                breakdown.Add($"Master star {i + 1} ({masterStarTag}): SKIPPED (no recent AH sales in SaleHistory yet)");
             }
         }
 
@@ -230,5 +298,36 @@ public class ComponentValueCalculator
             return null;
 
         return $"{quality.ToUpperInvariant()}_{slotName}_GEM";
+    }
+
+    // Temporary — appends one block per calculation to a plain text
+    // file so you can see exactly what was/wasn't priced without
+    // digging through structured logs. Delete this method and its call
+    // site above once you don't need it anymore.
+    private static void WriteDebugBreakdown(string itemTag, List<string> breakdown, double? total)
+    {
+        try
+        {
+            var dataPath =
+                Environment.GetEnvironmentVariable("DATA_PATH")
+                ?? AppContext.BaseDirectory;
+
+            string debugFile = Path.Combine(dataPath, "component-value-debug.txt");
+
+            var lines = new List<string>
+            {
+                $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC | {itemTag}"
+            };
+            lines.AddRange(breakdown.Select(line => "    " + line));
+            lines.Add($"    TOTAL: {(total.HasValue ? total.Value.ToString("N0") : "null (nothing priced)")}");
+            lines.Add("");
+
+            File.AppendAllLines(debugFile, lines);
+        }
+        catch
+        {
+            // Debug-only convenience — never let a logging failure take
+            // down a real sale from being recorded.
+        }
     }
 }

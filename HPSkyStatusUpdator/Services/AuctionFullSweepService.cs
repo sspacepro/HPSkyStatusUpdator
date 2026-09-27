@@ -113,21 +113,22 @@ public class AuctionFullSweepService : BackgroundService
         if (toUpsert.Count > 0)
             Upsert(toUpsert);
 
-        int expired = MarkExpiredMissing(seenUuids);
+        var (trueExpired, missedSales) = MarkExpiredMissing(seenUuids);
 
         _logger.LogInformation(
-            "Full sweep complete: {Upserted} upserted, {Expired} marked expired.",
+            "Full sweep complete: {Upserted} upserted, {TrueExpired} timed out unsold, {MissedSales} vanished early (likely sales reconciliation missed).",
             toUpsert.Count,
-            expired);
+            trueExpired,
+            missedSales);
 
-        WriteDebugLine(toUpsert.Count, expired, seenUuids.Count);
+        WriteDebugLine(toUpsert.Count, trueExpired, missedSales, seenUuids.Count);
     }
 
     // Temporary — appends one line per sweep to a plain text file so you
     // can eyeball cleanup counts without digging through console logs.
     // Safe to delete this method (and its call site above) once you
     // don't need it anymore.
-    private static void WriteDebugLine(int upserted, int expired, int stillActive)
+    private static void WriteDebugLine(int upserted, int trueExpired, int missedSales, int stillActive)
     {
         try
         {
@@ -139,7 +140,7 @@ public class AuctionFullSweepService : BackgroundService
 
             string line =
                 $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC | " +
-                $"upserted={upserted} | expired={expired} | stillActive={stillActive}";
+                $"upserted={upserted} | timedOutUnsold={trueExpired} | missedSales={missedSales} | stillActive={stillActive}";
 
             File.AppendAllText(debugFile, line + Environment.NewLine);
         }
@@ -279,15 +280,19 @@ public class AuctionFullSweepService : BackgroundService
         transaction.Commit();
     }
 
-    private int MarkExpiredMissing(HashSet<string> seenUuids)
+    private (int TrueExpired, int MissedSales) MarkExpiredMissing(HashSet<string> seenUuids)
     {
         using var connection = _market.GetConnection();
         connection.Open();
 
         var selectCommand = connection.CreateCommand();
-        selectCommand.CommandText = "SELECT Uuid FROM Auctions;";
+        selectCommand.CommandText = "SELECT Uuid, EndTime FROM Auctions;";
 
         var toExpire = new List<string>();
+        int trueExpired = 0;
+        int missedSales = 0;
+
+        long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         using (var reader = selectCommand.ExecuteReader())
         {
@@ -295,13 +300,26 @@ public class AuctionFullSweepService : BackgroundService
             {
                 string uuid = reader.GetString(0);
 
-                if (!seenUuids.Contains(uuid))
-                    toExpire.Add(uuid);
+                if (seenUuids.Contains(uuid))
+                    continue;
+
+                toExpire.Add(uuid);
+
+                long endTime = reader.GetInt64(1);
+
+                // A BIN listing only disappears before its own end time
+                // if someone bought it — so if it vanished with time
+                // still left on the clock, that's a sale our 60-second
+                // ended-auctions poll missed, not a normal expiry.
+                if (endTime <= now)
+                    trueExpired++;
+                else
+                    missedSales++;
             }
         }
 
         if (toExpire.Count == 0)
-            return 0;
+            return (0, 0);
 
         using var transaction = connection.BeginTransaction();
 
@@ -316,6 +334,6 @@ public class AuctionFullSweepService : BackgroundService
 
         transaction.Commit();
 
-        return toExpire.Count;
+        return (trueExpired, missedSales);
     }
 }

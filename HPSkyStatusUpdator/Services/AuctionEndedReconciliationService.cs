@@ -101,13 +101,13 @@ public class AuctionEndedReconciliationService : BackgroundService
         _logger.LogInformation("Ended-auction reconciliation: {Count} sales recorded.", sold);
     }
 
-    private static (string ItemTag, string Tier, string Attributes)? GetAuction(
+    private static (string ItemTag, string Tier, string Attributes, string Extras)? GetAuction(
         SqliteConnection connection,
         string uuid)
     {
         var command = connection.CreateCommand();
         command.CommandText =
-            "SELECT ItemTag, Tier, Attributes FROM Auctions WHERE Uuid = $uuid;";
+            "SELECT ItemTag, Tier, Attributes, Extras FROM Auctions WHERE Uuid = $uuid;";
         command.Parameters.AddWithValue("$uuid", uuid);
 
         using var reader = command.ExecuteReader();
@@ -118,21 +118,25 @@ public class AuctionEndedReconciliationService : BackgroundService
         return (
             reader.GetString(0),
             reader.IsDBNull(1) ? "" : reader.GetString(1),
-            reader.GetString(2));
+            reader.GetString(2),
+            reader.GetString(3));
     }
 
     private void RecordSale(
         SqliteConnection connection,
         string uuid,
-        (string ItemTag, string Tier, string Attributes) existing,
+        (string ItemTag, string Tier, string Attributes, string Extras) existing,
         long price,
         long soldAt)
     {
         var attributes = JsonSerializer.Deserialize<ItemAttributes>(existing.Attributes)
             ?? new ItemAttributes();
 
-        bool isOutlier = _outliers.IsOutlier(connection, existing.ItemTag, price);
+        // Component value first — the outlier check needs it to judge
+        // the *unexplained* part of the price, not the raw total.
         double? componentValue = _valueCalculator.Calculate(existing.ItemTag, attributes);
+
+        bool isOutlier = _outliers.IsOutlier(connection, existing.ItemTag, price, componentValue);
 
         var command = connection.CreateCommand();
         command.CommandText =
@@ -162,7 +166,11 @@ public class AuctionEndedReconciliationService : BackgroundService
         command.Parameters.AddWithValue("$hotPotato", (object?)attributes.HotPotatoCount ?? DBNull.Value);
         command.Parameters.AddWithValue("$petLevel", (object?)attributes.PetLevel ?? DBNull.Value);
         command.Parameters.AddWithValue("$componentValue", (object?)componentValue ?? DBNull.Value);
-        command.Parameters.AddWithValue("$extras", "{}");
+        // Was hardcoded to "{}" before — that's why scrolls (and
+        // anything else in Extras) never showed up in SaleHistory. The
+        // live Auctions row already has the real decoded Extras JSON;
+        // just carry it over.
+        command.Parameters.AddWithValue("$extras", existing.Extras);
         command.Parameters.AddWithValue("$isOutlier", isOutlier ? 1 : 0);
 
         command.ExecuteNonQuery();
